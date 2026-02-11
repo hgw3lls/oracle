@@ -91,3 +91,55 @@ pre {
   .layout { grid-template-columns: 1fr; }
   .panel { max-height: unset; }
 }
+
+.preview-wrap { margin-top: 1rem; }
+.preview-grid { display: grid; grid-template-columns: 1fr; gap: 0.45rem; }
+.preview-card {
+  text-align: left;
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid #325276;
+  background: #0b1320;
+  color: #d7ebff;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.preview-card.active { border-color: #89c7ff; background: #173050; }
+
+.top-tabs { display: inline-flex; gap: 0.5rem; margin-left: 1rem; }
+.tab-btn {
+  border: 1px solid #355982;
+  background: #102038;
+  color: #d9ebff;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+.tab-btn.active { background: #1f3f66; border-color: #8dc9ff; }
+
+.triptych-prompts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.triptych-column h3 { margin: 0 0 0.3rem; color: #8ec7ff; font-size: 0.85rem; }
+.manifest-btn {
+  border: 1px solid #3f6fa0;
+  background: #153459;
+  color: #e7f3ff;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  margin-bottom: 0.8rem;
+}
+
+.button-row { display: flex; gap: 0.5rem; margin-bottom: 0.55rem; }
+.export-actions { margin-top: 0.35rem; }
+.copy-status { margin: 0.4rem 0 0.8rem; color: #9fd0ff; font-size: 0.82rem; }
+
+.state-row { display: grid; grid-template-columns: auto 1fr; gap: 0.45rem; align-items: center; }
+.file-btn { display: inline-flex; align-items: center; justify-content: center; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
