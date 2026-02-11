@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { copyTextToClipboard, exportTextFile } from '../export/systemFile';
+import PlateSeparationCanvas from './PlateSeparationCanvas';
+import { exportChainManifest, exportEvolutionManifest } from '../export/manifestExport';
 
 const exportManifest = (manifest) => {
   const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
@@ -49,6 +51,7 @@ const exportBatchSnapshots = ({ selectedStates, seed }) => {
 const OUTPUT_TABS = {
   prompt: 'Prompt',
   parameters: 'Parameters',
+  plates: 'Plates',
 };
 
 export default function OutputPanel({
@@ -59,11 +62,41 @@ export default function OutputPanel({
   triptychMode = false,
   triptychStates = [],
   selectedStates = [],
+  animationFrame = null,
+  chainResult = null,
+  onUseBestChainState,
 }) {
   const [copyStatus, setCopyStatus] = useState('');
   const [activeTab, setActiveTab] = useState('prompt');
   const [showSystemTools, setShowSystemTools] = useState(false);
   const systemToolsRef = useRef(null);
+
+  const [plateMode, setPlateMode] = useState('composite');
+
+  const plateState = useMemo(() => {
+    if (animationFrame?.state) {
+      const params = animationFrame.state;
+      return {
+        ...state,
+        hallucination: Math.round(params.hallucination ?? state?.hallucination ?? 50),
+        temporal: Math.round(params.temporal ?? state?.temporal ?? 55),
+        material: Math.round(params.material ?? state?.material ?? 55),
+        space: Math.round(params.space ?? state?.space ?? 55),
+        symbol: Math.round(params.symbol ?? state?.symbol ?? 55),
+        agency: Math.round(params.agency ?? state?.agency ?? 55),
+        grain: Math.round(params.grain ?? state?.grain ?? 40),
+        lineWobble: Math.round(params['line-wobble'] ?? params.lineWobble ?? state?.lineWobble ?? 40),
+        erasure: Math.round(params.erasure ?? state?.erasure ?? 30),
+        annotation: Math.round(params.annotation ?? state?.annotation ?? 42),
+        paletteValue: Math.round(params.palette ?? params.paletteValue ?? state?.paletteValue ?? 50),
+        gestureValue: Math.round(params.gesture ?? params.gestureValue ?? state?.gestureValue ?? 50),
+      };
+    }
+
+    return state;
+  }, [state, animationFrame]);
+
+  const plateSeed = animationFrame?.seed || state?.seed || manifest?.seed || 'oracle-plates';
 
   const parameterSnapshot = useMemo(() => {
     if (!state) return { currentState: null, manifest };
@@ -185,6 +218,14 @@ export default function OutputPanel({
                   <button type="button" className="manifest-btn" onClick={() => copyDoc('Compiled Prompt', state?.prompt)} disabled={!state?.prompt}>Copy prompt</button>
                   <button type="button" className="manifest-btn" onClick={exportPromptBundle} disabled={!state?.prompt}>Save prompt</button>
                   <button type="button" className="manifest-btn" onClick={openSystemTools}>System + bootloader tools</button>
+                  <button
+                    type="button"
+                    className="manifest-btn"
+                    onClick={() => exportEvolutionManifest(selectedStates.length ? selectedStates : (state ? [state] : []), { seed: state?.seed, mode: state?.mode })}
+                    disabled={!state}
+                  >
+                    Export evolution manifest
+                  </button>
                 </div>
                 <pre>{state?.prompt}</pre>
               </>
@@ -224,6 +265,27 @@ export default function OutputPanel({
           </div>
         ) : null}
 
+
+
+        {activeTab === 'plates' ? (
+          <div className="tab-content-block">
+            <h2>Plate Separation</h2>
+            <div className="button-row">
+              <button type="button" className={plateMode === 'composite' ? 'tab-btn active' : 'tab-btn'} onClick={() => setPlateMode('composite')}>Composite</button>
+              <button type="button" className={plateMode === 'separate' ? 'tab-btn active' : 'tab-btn'} onClick={() => setPlateMode('separate')}>Separate</button>
+              <button type="button" className={plateMode === 'solo' ? 'tab-btn active' : 'tab-btn'} onClick={() => setPlateMode('solo')}>Solo</button>
+            </div>
+            <PlateSeparationCanvas
+              state={plateState}
+              width={620}
+              height={360}
+              seed={String(plateSeed)}
+              showLegend
+              plateMode={plateMode}
+            />
+          </div>
+        ) : null}
+
         {activeTab === 'parameters' ? (
           <div className="tab-content-block">
             <h2>Parameter Snapshot</h2>
@@ -242,8 +304,24 @@ export default function OutputPanel({
               >
                 Export .json
               </button>
+              <button
+                type="button"
+                className="manifest-btn"
+                onClick={() => exportChainManifest(chainResult || { nodes: [], edges: [] }, { seed: state?.seed })}
+                disabled={!chainResult?.nodes?.length}
+              >
+                Export chain manifest
+              </button>
+              <button
+                type="button"
+                className="manifest-btn"
+                onClick={() => onUseBestChainState?.()}
+                disabled={!chainResult?.bestNodeId}
+              >
+                Use Best as Current State
+              </button>
             </div>
-            <pre>{JSON.stringify(parameterSnapshot, null, 2)}</pre>
+            <pre>{JSON.stringify({ parameterSnapshot, chainSummary: chainResult ? { bestNodeId: chainResult.bestNodeId, nodes: chainResult.nodes.length, edges: chainResult.edges.length } : null }, null, 2)}</pre>
           </div>
         ) : null}
       </div>

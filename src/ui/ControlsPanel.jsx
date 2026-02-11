@@ -8,6 +8,15 @@ export default function ControlsPanel({
   onImportPreset,
   onSavePreset,
   presetError,
+  hhText,
+  onHHTextChange,
+  onParseApplyHH,
+  onLoadExampleHH,
+  onClearHH,
+  hhErrors = [],
+  chainConfig,
+  onPatchChainConfig,
+  onRunChain,
 }) {
   return (
     <aside className="panel controls">
@@ -24,6 +33,31 @@ export default function ControlsPanel({
         </div>
         {presetError ? <p className="copy-status">{presetError}</p> : null}
       </fieldset>
+
+
+      <details>
+        <summary><strong>HH Editor</strong></summary>
+        <fieldset>
+          <legend>HH Macro</legend>
+          <label>
+            HH blocks
+            <textarea
+              value={hhText}
+              onChange={(e) => onHHTextChange(e.target.value)}
+              rows={10}
+              placeholder={"HANDRAW-HUMAN\nsubject: Ash-fall cathedrals\nHYPNA-MATRIX\ntemporal: 66"}
+            />
+          </label>
+          <div className="button-row">
+            <button type="button" className="manifest-btn" onClick={onParseApplyHH}>Parse + Apply</button>
+            <button type="button" className="manifest-btn" onClick={onLoadExampleHH}>Load Example HH</button>
+            <button type="button" className="manifest-btn" onClick={onClearHH}>Clear</button>
+          </div>
+          {hhErrors.length ? (
+            <p className="copy-status">{hhErrors.join('\n')}</p>
+          ) : null}
+        </fieldset>
+      </details>
 
       <label>
         Mode
@@ -54,6 +88,36 @@ export default function ControlsPanel({
             {token}
           </label>
         ))}
+      </fieldset>
+
+
+      <fieldset>
+        <legend>Chain</legend>
+        <div className="split">
+          <label>
+            Generations
+            <input type="number" min="1" max="20" value={chainConfig.generations} onChange={(e) => onPatchChainConfig('generations', Number(e.target.value))} />
+          </label>
+          <label>
+            Agents / Gen
+            <input type="number" min="1" max="30" value={chainConfig.agentsPerGen} onChange={(e) => onPatchChainConfig('agentsPerGen', Number(e.target.value))} />
+          </label>
+        </div>
+        <div className="split">
+          <label>
+            Keep Top
+            <input type="number" min="1" max="30" value={chainConfig.keepTop} onChange={(e) => onPatchChainConfig('keepTop', Number(e.target.value))} />
+          </label>
+          <label>
+            Intensity
+            <input type="number" min="0" max="25" value={chainConfig.intensity} onChange={(e) => onPatchChainConfig('intensity', Number(e.target.value))} />
+          </label>
+        </div>
+        <label>
+          Chain Seed
+          <input value={chainConfig.seed} onChange={(e) => onPatchChainConfig('seed', e.target.value)} />
+        </label>
+        <button type="button" className="manifest-btn" onClick={onRunChain}>Run Chain</button>
       </fieldset>
 
       <fieldset>
