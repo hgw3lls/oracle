@@ -201,10 +201,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     padding: 0.3rem 0.6rem;
   }
 
-  .output-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .split {
     grid-template-columns: 1fr 1fr;
   }
