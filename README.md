@@ -1,6 +1,15 @@
 # Oracle
 
-This project is now a React + Vite web app with a brutalist style and a GitHub Actions workflow for automatic GitHub Pages deployment.
+Oracle now runs as a React + Vite web app that refactors the original Python/Tkinter prompt builder into a browser-based experience.
+
+## What changed
+
+- The old Python app remains in the repo for reference (`hypna_prompt_gui_v3.py`).
+- The web app now includes:
+  - Prompt input controls (mode, subject, notes, style tokens)
+  - Auto-evolve state generation controls
+  - Humanizer controls
+  - State browser and compiled prompt output panel
 
 ## Local development
 
@@ -15,7 +24,3 @@ npm run dev
 npm run build
 npm run preview
 ```
-
-## GitHub Pages deployment
-
-Pushing to `main` runs `.github/workflows/deploy.yml`, which builds the app and publishes the `dist/` artifact to GitHub Pages.
