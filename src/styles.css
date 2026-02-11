@@ -54,7 +54,7 @@ body { margin: 0; background: radial-gradient(circle at top, #1a2130, #090b10 62
 
 .controls { order: 2; }
 .states { order: 3; }
-.output { order: 1; display: grid; grid-template-rows: auto auto 1fr auto; gap: 0.5rem; }
+.output { order: 1; }
 fieldset { border: 1px solid #334765; border-radius: 6px; padding: 0.8rem; margin: 0 0 0.8rem; }
 legend { color: #8ec7ff; padding: 0 0.4rem; font-size: 0.85rem; }
 
@@ -133,23 +133,12 @@ pre {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.45rem;
-  margin-bottom: 0.25rem;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: rgba(16, 22, 33, 0.96);
-  padding-bottom: 0.35rem;
+  margin-bottom: 0.75rem;
 }
 
 .tab-content-block {
   display: grid;
-  gap: 0.5rem;
-  min-height: 0;
-}
-
-.compact-pre {
-  max-height: 34vh;
-  overflow: auto;
+  gap: 0.6rem;
 }
 
 .triptych-prompts {
@@ -174,6 +163,11 @@ pre {
   padding: 0.45rem 0.65rem;
   cursor: pointer;
   margin-bottom: 0.45rem;
+}
+.inline-copy {
+  margin-bottom: 0;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.76rem;
 }
 .inline-copy {
   margin-bottom: 0;
@@ -210,14 +204,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .tab-btn {
     width: auto;
     padding: 0.3rem 0.6rem;
-  }
-
-  .output-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .compact-pre {
-    max-height: 38vh;
   }
 
   .split {
