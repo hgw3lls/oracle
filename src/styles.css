@@ -374,3 +374,27 @@ button:disabled {
     order: initial;
   }
 }
+
+.plate-canvas-wrap {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.plate-canvas {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border: 2px solid #000;
+  background: #fff;
+}
+
+.graph-wrap {
+  margin-bottom: 0.8rem;
+}
+
+.chain-graph {
+  width: 100%;
+  min-height: 260px;
+  border: 2px solid #000;
+  background: #f8f8f8;
+}
