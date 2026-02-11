@@ -162,7 +162,12 @@ pre {
   border-radius: 6px;
   padding: 0.45rem 0.65rem;
   cursor: pointer;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.45rem;
+}
+.inline-copy {
+  margin-bottom: 0;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.76rem;
 }
 .inline-copy {
   margin-bottom: 0;
