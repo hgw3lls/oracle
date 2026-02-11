@@ -58,6 +58,12 @@ export default function OutputPanel({
   const [copyStatus, setCopyStatus] = useState('');
 
   const copyDoc = async (docType, content) => {
+    if (!content) {
+      setCopyStatus(`No ${docType} to copy.`);
+      setTimeout(() => setCopyStatus(''), 1800);
+      return;
+    }
+
     try {
       await copyTextToClipboard(content);
       setCopyStatus(`${docType} copied.`);
@@ -73,10 +79,23 @@ export default function OutputPanel({
       {triptychMode ? (
         <>
           <h2>Triptych Compiled Prompts</h2>
+          <div className="button-row stack-mobile">
+            <button
+              type="button"
+              className="manifest-btn"
+              onClick={() => copyDoc('Triptych Prompts', triptychStates.map((item) => `${item.stateName}\n${item.prompt}`).join('\n\n---\n\n'))}
+              disabled={!triptychStates.length}
+            >
+              Copy all triptych prompts
+            </button>
+          </div>
           <div className="triptych-prompts">
             {triptychStates.map((item, idx) => (
               <article key={`trip-${idx}`} className="triptych-column">
-                <h3>{item.stateName}</h3>
+                <div className="triptych-header">
+                  <h3>{item.stateName}</h3>
+                  <button type="button" className="manifest-btn inline-copy" onClick={() => copyDoc(`${item.stateName} prompt`, item.prompt)}>Copy</button>
+                </div>
                 <pre>{item.prompt}</pre>
               </article>
             ))}
@@ -86,6 +105,9 @@ export default function OutputPanel({
       ) : (
         <>
           <h2>Compiled Prompt</h2>
+          <div className="button-row stack-mobile">
+            <button type="button" className="manifest-btn" onClick={() => copyDoc('Compiled Prompt', state?.prompt)} disabled={!state?.prompt}>Copy prompt</button>
+          </div>
           <pre>{state?.prompt}</pre>
         </>
       )}
