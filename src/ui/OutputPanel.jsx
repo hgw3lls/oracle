@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { copyTextToClipboard, exportTextFile } from '../export/systemFile';
 
 const exportManifest = (manifest) => {
@@ -46,6 +46,12 @@ const exportBatchSnapshots = ({ selectedStates, seed }) => {
   URL.revokeObjectURL(url);
 };
 
+const OUTPUT_TABS = {
+  prompt: 'Prompt',
+  parameters: 'Parameters',
+  bootloader: 'Bootloader + Exports',
+};
+
 export default function OutputPanel({
   state,
   systemDocument,
@@ -56,6 +62,38 @@ export default function OutputPanel({
   selectedStates = [],
 }) {
   const [copyStatus, setCopyStatus] = useState('');
+  const [activeTab, setActiveTab] = useState('prompt');
+
+  const parameterSnapshot = useMemo(() => {
+    if (!state) return { currentState: null, manifest };
+
+    return {
+      currentState: {
+        stateName: state.stateName,
+        batchId: state.batchId,
+        seed: state.seed,
+        flow: state.flow,
+        params: {
+          hallucination: state.hallucination,
+          temporal: state.temporal,
+          material: state.material,
+          space: state.space,
+          symbol: state.symbol,
+          agency: state.agency,
+          grain: state.grain,
+          lineWobble: state.lineWobble,
+          erasure: state.erasure,
+          annotation: state.annotation,
+          palette: state.paletteValue,
+          gesture: state.gestureValue,
+        },
+        textureProfile: state.saturation,
+        motionProfile: state.motion,
+        mutationNote: state.mutationNote,
+      },
+      manifest,
+    };
+  }, [state, manifest]);
 
   const copyDoc = async (docType, content) => {
     if (!content) {
@@ -128,20 +166,43 @@ export default function OutputPanel({
           <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-system-file.txt', systemDocument)}>Export .txt</button>
           <button type="button" className="manifest-btn" onClick={() => copyDoc('System File', systemDocument)}>Copy to clipboard</button>
         </div>
-        <pre>{systemDocument}</pre>
+      ) : null}
 
-        <h2>Bootloader (run this)</h2>
-        <div className="button-row">
-          <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-bootloader.txt', bootloaderDocument)}>Export .txt</button>
-          <button type="button" className="manifest-btn" onClick={() => copyDoc('Bootloader', bootloaderDocument)}>Copy to clipboard</button>
+      {activeTab === 'bootloader' ? (
+        <div className="tab-content-block">
+          <h2>Batch Export (selected snapshots)</h2>
+          <button
+            type="button"
+            className="manifest-btn"
+            onClick={() => exportBatchSnapshots({ selectedStates, seed: state?.seed || manifest?.seed || 'n/a' })}
+            disabled={!selectedStates.length}
+          >
+            Export selected snapshots .json
+          </button>
+
+          {triptychMode ? (
+            <button type="button" className="manifest-btn" onClick={() => exportManifest(manifest)}>Export manifest</button>
+          ) : null}
+
+          <div className="export-actions">
+            <h2>System File (paste anytime)</h2>
+            <div className="button-row">
+              <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-system-file.txt', systemDocument)}>Export .txt</button>
+              <button type="button" className="manifest-btn" onClick={() => copyDoc('System File', systemDocument)}>Copy to clipboard</button>
+            </div>
+            <pre>{systemDocument}</pre>
+
+            <h2>Bootloader (run this)</h2>
+            <div className="button-row">
+              <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-bootloader.txt', bootloaderDocument)}>Export .txt</button>
+              <button type="button" className="manifest-btn" onClick={() => copyDoc('Bootloader', bootloaderDocument)}>Copy to clipboard</button>
+            </div>
+            <pre>{bootloaderDocument}</pre>
+          </div>
         </div>
-        <pre>{bootloaderDocument}</pre>
-      </div>
+      ) : null}
 
       {copyStatus ? <p className="copy-status">{copyStatus}</p> : null}
-
-      <h2>Manifest Snapshot</h2>
-      <pre>{JSON.stringify(manifest, null, 2)}</pre>
     </section>
   );
 }
