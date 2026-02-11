@@ -114,57 +114,78 @@ export default function OutputPanel({
 
   return (
     <section className="panel output">
-      {triptychMode ? (
-        <>
-          <h2>Triptych Compiled Prompts</h2>
-          <div className="button-row stack-mobile">
+      <div className="output-tabs">
+        {Object.entries(OUTPUT_TABS).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`tab-btn ${activeTab === key ? 'active' : ''}`}
+            onClick={() => setActiveTab(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'prompt' ? (
+        <div className="tab-content-block">
+          {triptychMode ? (
+            <>
+              <h2>Triptych Compiled Prompts</h2>
+              <div className="button-row stack-mobile">
+                <button
+                  type="button"
+                  className="manifest-btn"
+                  onClick={() => copyDoc('Triptych Prompts', triptychStates.map((item) => `${item.stateName}\n${item.prompt}`).join('\n\n---\n\n'))}
+                  disabled={!triptychStates.length}
+                >
+                  Copy all triptych prompts
+                </button>
+              </div>
+              <div className="triptych-prompts">
+                {triptychStates.map((item, idx) => (
+                  <article key={`trip-${idx}`} className="triptych-column">
+                    <div className="triptych-header">
+                      <h3>{item.stateName}</h3>
+                      <button type="button" className="manifest-btn inline-copy" onClick={() => copyDoc(`${item.stateName} prompt`, item.prompt)}>Copy</button>
+                    </div>
+                    <pre>{item.prompt}</pre>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>Compiled Prompt</h2>
+              <div className="button-row stack-mobile">
+                <button type="button" className="manifest-btn" onClick={() => copyDoc('Compiled Prompt', state?.prompt)} disabled={!state?.prompt}>Copy prompt</button>
+              </div>
+              <pre>{state?.prompt}</pre>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {activeTab === 'parameters' ? (
+        <div className="tab-content-block">
+          <h2>Parameter Snapshot</h2>
+          <div className="button-row">
             <button
               type="button"
               className="manifest-btn"
-              onClick={() => copyDoc('Triptych Prompts', triptychStates.map((item) => `${item.stateName}\n${item.prompt}`).join('\n\n---\n\n'))}
-              disabled={!triptychStates.length}
+              onClick={() => copyDoc('Parameter Snapshot', JSON.stringify(parameterSnapshot, null, 2))}
             >
-              Copy all triptych prompts
+              Copy snapshot
+            </button>
+            <button
+              type="button"
+              className="manifest-btn"
+              onClick={() => exportTextFile('hypnagnosis-parameter-snapshot.json', JSON.stringify(parameterSnapshot, null, 2))}
+            >
+              Export .json
             </button>
           </div>
-          <div className="triptych-prompts">
-            {triptychStates.map((item, idx) => (
-              <article key={`trip-${idx}`} className="triptych-column">
-                <div className="triptych-header">
-                  <h3>{item.stateName}</h3>
-                  <button type="button" className="manifest-btn inline-copy" onClick={() => copyDoc(`${item.stateName} prompt`, item.prompt)}>Copy</button>
-                </div>
-                <pre>{item.prompt}</pre>
-              </article>
-            ))}
-          </div>
-          <button type="button" className="manifest-btn" onClick={() => exportManifest(manifest)}>Export manifest</button>
-        </>
-      ) : (
-        <>
-          <h2>Compiled Prompt</h2>
-          <div className="button-row stack-mobile">
-            <button type="button" className="manifest-btn" onClick={() => copyDoc('Compiled Prompt', state?.prompt)} disabled={!state?.prompt}>Copy prompt</button>
-          </div>
-          <pre>{state?.prompt}</pre>
-        </>
-      )}
-
-      <h2>Batch Export (selected snapshots)</h2>
-      <button
-        type="button"
-        className="manifest-btn"
-        onClick={() => exportBatchSnapshots({ selectedStates, seed: state?.seed || manifest?.seed || 'n/a' })}
-        disabled={!selectedStates.length}
-      >
-        Export selected snapshots .json
-      </button>
-
-      <div className="export-actions">
-        <h2>System File (paste anytime)</h2>
-        <div className="button-row">
-          <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-system-file.txt', systemDocument)}>Export .txt</button>
-          <button type="button" className="manifest-btn" onClick={() => copyDoc('System File', systemDocument)}>Copy to clipboard</button>
+          <pre>{JSON.stringify(parameterSnapshot, null, 2)}</pre>
         </div>
       ) : null}
 
