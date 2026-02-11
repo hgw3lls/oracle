@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { copyTextToClipboard, exportTextFile } from '../export/systemFile';
 
 const exportManifest = (manifest) => {
@@ -46,6 +46,12 @@ const exportBatchSnapshots = ({ selectedStates, seed }) => {
   URL.revokeObjectURL(url);
 };
 
+const OUTPUT_TABS = {
+  prompt: 'Prompt',
+  parameters: 'Parameters',
+  bootloader: 'Bootloader + Exports',
+};
+
 export default function OutputPanel({
   state,
   systemDocument,
@@ -56,8 +62,46 @@ export default function OutputPanel({
   selectedStates = [],
 }) {
   const [copyStatus, setCopyStatus] = useState('');
+  const [activeTab, setActiveTab] = useState('prompt');
+
+  const parameterSnapshot = useMemo(() => {
+    if (!state) return { currentState: null, manifest };
+
+    return {
+      currentState: {
+        stateName: state.stateName,
+        batchId: state.batchId,
+        seed: state.seed,
+        flow: state.flow,
+        params: {
+          hallucination: state.hallucination,
+          temporal: state.temporal,
+          material: state.material,
+          space: state.space,
+          symbol: state.symbol,
+          agency: state.agency,
+          grain: state.grain,
+          lineWobble: state.lineWobble,
+          erasure: state.erasure,
+          annotation: state.annotation,
+          palette: state.paletteValue,
+          gesture: state.gestureValue,
+        },
+        textureProfile: state.saturation,
+        motionProfile: state.motion,
+        mutationNote: state.mutationNote,
+      },
+      manifest,
+    };
+  }, [state, manifest]);
 
   const copyDoc = async (docType, content) => {
+    if (!content) {
+      setCopyStatus(`No ${docType} to copy.`);
+      setTimeout(() => setCopyStatus(''), 1800);
+      return;
+    }
+
     try {
       await copyTextToClipboard(content);
       setCopyStatus(`${docType} copied.`);
@@ -70,56 +114,106 @@ export default function OutputPanel({
 
   return (
     <section className="panel output">
-      {triptychMode ? (
-        <>
-          <h2>Triptych Compiled Prompts</h2>
-          <div className="triptych-prompts">
-            {triptychStates.map((item, idx) => (
-              <article key={`trip-${idx}`} className="triptych-column">
-                <h3>{item.stateName}</h3>
-                <pre>{item.prompt}</pre>
-              </article>
-            ))}
-          </div>
-          <button type="button" className="manifest-btn" onClick={() => exportManifest(manifest)}>Export manifest</button>
-        </>
-      ) : (
-        <>
-          <h2>Compiled Prompt</h2>
-          <pre>{state?.prompt}</pre>
-        </>
-      )}
-
-      <h2>Batch Export (selected snapshots)</h2>
-      <button
-        type="button"
-        className="manifest-btn"
-        onClick={() => exportBatchSnapshots({ selectedStates, seed: state?.seed || manifest?.seed || 'n/a' })}
-        disabled={!selectedStates.length}
-      >
-        Export selected snapshots .json
-      </button>
-
-      <div className="export-actions">
-        <h2>System File (paste anytime)</h2>
-        <div className="button-row">
-          <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-system-file.txt', systemDocument)}>Export .txt</button>
-          <button type="button" className="manifest-btn" onClick={() => copyDoc('System File', systemDocument)}>Copy to clipboard</button>
-        </div>
-        <pre>{systemDocument}</pre>
-
-        <h2>Bootloader (run this)</h2>
-        <div className="button-row">
-          <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-bootloader.txt', bootloaderDocument)}>Export .txt</button>
-          <button type="button" className="manifest-btn" onClick={() => copyDoc('Bootloader', bootloaderDocument)}>Copy to clipboard</button>
-        </div>
-        <pre>{bootloaderDocument}</pre>
+      <h2>Output Workspace</h2>
+      <div className="output-tabs" role="tablist" aria-label="Output sections">
+        {Object.entries(OUTPUT_TABS).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === key}
+            className={activeTab === key ? 'tab-btn active' : 'tab-btn'}
+            onClick={() => setActiveTab(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {copyStatus ? <p className="copy-status">{copyStatus}</p> : null}
+      {activeTab === 'prompt' ? (
+        <div className="tab-content-block">
+          {triptychMode ? (
+            <>
+              <h2>Triptych Compiled Prompts</h2>
+              <div className="button-row stack-mobile">
+                <button
+                  type="button"
+                  className="manifest-btn"
+                  onClick={() => copyDoc('Triptych Prompts', triptychStates.map((item) => `${item.stateName}\n${item.prompt}`).join('\n\n---\n\n'))}
+                  disabled={!triptychStates.length}
+                >
+                  Copy all triptych prompts
+                </button>
+              </div>
+              <div className="triptych-prompts">
+                {triptychStates.map((item, idx) => (
+                  <article key={`trip-${idx}`} className="triptych-column">
+                    <div className="triptych-header">
+                      <h3>{item.stateName}</h3>
+                      <button type="button" className="manifest-btn inline-copy" onClick={() => copyDoc(`${item.stateName} prompt`, item.prompt)}>Copy</button>
+                    </div>
+                    <pre>{item.prompt}</pre>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>Compiled Prompt</h2>
+              <div className="button-row stack-mobile">
+                <button type="button" className="manifest-btn" onClick={() => copyDoc('Compiled Prompt', state?.prompt)} disabled={!state?.prompt}>Copy prompt</button>
+              </div>
+              <pre>{state?.prompt}</pre>
+            </>
+          )}
+        </div>
+      ) : null}
 
-      <h2>Manifest Snapshot</h2>
-      <pre>{JSON.stringify(manifest, null, 2)}</pre>
+      {activeTab === 'parameters' ? (
+        <div className="tab-content-block">
+          <h2>Parameters Snapshot</h2>
+          <div className="button-row stack-mobile">
+            <button type="button" className="manifest-btn" onClick={() => copyDoc('Parameters JSON', JSON.stringify(parameterSnapshot, null, 2))}>Copy parameters JSON</button>
+          </div>
+          <pre>{JSON.stringify(parameterSnapshot, null, 2)}</pre>
+        </div>
+      ) : null}
+
+      {activeTab === 'bootloader' ? (
+        <div className="tab-content-block">
+          <h2>Batch Export (selected snapshots)</h2>
+          <button
+            type="button"
+            className="manifest-btn"
+            onClick={() => exportBatchSnapshots({ selectedStates, seed: state?.seed || manifest?.seed || 'n/a' })}
+            disabled={!selectedStates.length}
+          >
+            Export selected snapshots .json
+          </button>
+
+          {triptychMode ? (
+            <button type="button" className="manifest-btn" onClick={() => exportManifest(manifest)}>Export manifest</button>
+          ) : null}
+
+          <div className="export-actions">
+            <h2>System File (paste anytime)</h2>
+            <div className="button-row">
+              <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-system-file.txt', systemDocument)}>Export .txt</button>
+              <button type="button" className="manifest-btn" onClick={() => copyDoc('System File', systemDocument)}>Copy to clipboard</button>
+            </div>
+            <pre>{systemDocument}</pre>
+
+            <h2>Bootloader (run this)</h2>
+            <div className="button-row">
+              <button type="button" className="manifest-btn" onClick={() => exportTextFile('hypnagnosis-bootloader.txt', bootloaderDocument)}>Export .txt</button>
+              <button type="button" className="manifest-btn" onClick={() => copyDoc('Bootloader', bootloaderDocument)}>Copy to clipboard</button>
+            </div>
+            <pre>{bootloaderDocument}</pre>
+          </div>
+        </div>
+      ) : null}
+
+      {copyStatus ? <p className="copy-status">{copyStatus}</p> : null}
     </section>
   );
 }
