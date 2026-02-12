@@ -9,6 +9,30 @@ const asNumber = (value: unknown, fallback: number) => (typeof value === 'number
 const asStringArray = (value: unknown, fallback: string[]) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback);
 
 
+const asModuleToggleMap = (value: unknown): SchemaV2['MODULES'] => {
+  const modules = asObject(value);
+  return {
+    INPUT: asBoolean(modules.INPUT, defaultSchemaV2.MODULES.INPUT),
+    STATE_MAP: asBoolean(modules.STATE_MAP, defaultSchemaV2.MODULES.STATE_MAP),
+    HALLUCINATION: asBoolean(modules.HALLUCINATION, defaultSchemaV2.MODULES.HALLUCINATION),
+    HYPNA_MATRIX: asBoolean(modules.HYPNA_MATRIX, defaultSchemaV2.MODULES.HYPNA_MATRIX),
+    PROMPT_GENOME: asBoolean(modules.PROMPT_GENOME, defaultSchemaV2.MODULES.PROMPT_GENOME),
+    VISUAL_GRAMMAR: asBoolean(modules.VISUAL_GRAMMAR, defaultSchemaV2.MODULES.VISUAL_GRAMMAR),
+    INFLUENCE_ENGINE: asBoolean(modules.INFLUENCE_ENGINE, defaultSchemaV2.MODULES.INFLUENCE_ENGINE),
+    PALETTE: asBoolean(modules.PALETTE, defaultSchemaV2.MODULES.PALETTE),
+    CONSTRAINTS: asBoolean(modules.CONSTRAINTS, defaultSchemaV2.MODULES.CONSTRAINTS),
+    ANIMATION: asBoolean(modules.ANIMATION, defaultSchemaV2.MODULES.ANIMATION),
+  };
+};
+
+const asIgnoreRules = (value: unknown): SchemaV2['IGNORE_RULES'] => {
+  const rules = asObject(value);
+  return {
+    hard_disable: asBoolean(rules.hard_disable, defaultSchemaV2.IGNORE_RULES.hard_disable),
+    preserve_state: asBoolean(rules.preserve_state, defaultSchemaV2.IGNORE_RULES.preserve_state),
+  };
+};
+
 const asKeyframes = (value: unknown): SchemaV2['animation']['keyframes'] => {
   if (!Array.isArray(value)) return [];
   return value
@@ -39,6 +63,8 @@ export const migrateToV2 = (input: unknown): SchemaV2 => {
   const triptych = asObject(source.triptych);
   const constraints = asObject(source.constraints ?? source.CONSTRAINTS);
   const animation = asObject(source.animation ?? source.ANIMATION);
+  const modules = source.MODULES ?? source.modules;
+  const ignoreRules = source.IGNORE_RULES ?? source.ignore_rules;
   const panels = Array.isArray(triptych.panels) ? triptych.panels.map(asObject) : [];
 
   const panel1 = panels[0] || {};
@@ -93,6 +119,8 @@ export const migrateToV2 = (input: unknown): SchemaV2 => {
       ...defaultSchemaV2.humanizerQualities,
       ...asObject(source.humanizerQualities),
     },
+    MODULES: asModuleToggleMap(modules),
+    IGNORE_RULES: asIgnoreRules(ignoreRules),
     constraints: {
       forbid: asStringArray(constraints.forbid, defaultSchemaV2.constraints.forbid),
       require: asStringArray(constraints.require, defaultSchemaV2.constraints.require),

@@ -54,4 +54,33 @@ describe('migrateToV2', () => {
     expect(migrated.endH).toBe(77);
     expect(migrated.mutateStrength).toBe(31);
   });
+
+  it('applies MODULES and IGNORE_RULES defaults when missing', () => {
+    const migrated = migrateToV2({ mode: 'FULL' });
+
+    expect(migrated.MODULES).toEqual(defaultSchemaV2.MODULES);
+    expect(migrated.IGNORE_RULES).toEqual(defaultSchemaV2.IGNORE_RULES);
+    expect(migrated.MODULES.ANIMATION).toBe(false);
+  });
+
+  it('preserves MODULES and IGNORE_RULES across export/import', () => {
+    const source = migrateToV2({
+      MODULES: {
+        ...defaultSchemaV2.MODULES,
+        INPUT: false,
+        ANIMATION: true,
+      },
+      IGNORE_RULES: {
+        hard_disable: true,
+        preserve_state: true,
+      },
+    });
+
+    const exported = JSON.stringify(source);
+    const imported = migrateToV2(JSON.parse(exported));
+
+    expect(imported.MODULES).toEqual(source.MODULES);
+    expect(imported.IGNORE_RULES).toEqual(source.IGNORE_RULES);
+  });
+
 });

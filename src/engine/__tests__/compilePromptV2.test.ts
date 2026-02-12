@@ -18,6 +18,7 @@ const schema = {
       { at: 0, overrides: { mutateStrength: 20, hallucination: 40 } },
       { at: 1, overrides: { mutateStrength: 80, hallucination: 90 } },
     ],
+    keyframes: [],
   },
 };
 
@@ -44,5 +45,64 @@ describe('compilePromptV2', () => {
     expect(first[0].frameState.hallucination).toBeCloseTo(40, 6);
     expect(first[3].frameState.hallucination).toBeCloseTo(90, 6);
     expect(first[1].compiledPrompt).toContain('Render intent:');
+  });
+
+  it('omits palette footer when MODULES.PALETTE is false', () => {
+    const output = compilePromptV2({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        PALETTE: false,
+      },
+    });
+
+    expect(output.compiledPrompt).not.toContain('PALETTE FOOTER');
+    expect(output.debugSections.find((section) => section.title === 'PALETTE FOOTER')).toBeUndefined();
+  });
+
+  it('omits influence behavior text when MODULES.INFLUENCE_ENGINE is false', () => {
+    const output = compilePromptV2({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        INFLUENCE_ENGINE: false,
+      },
+    });
+
+    expect(output.compiledPrompt).not.toContain('Render intent:');
+    expect(output.compiledPrompt).not.toContain('spray turbulence in peripheral textures');
+    expect(output.debugSections.find((section) => section.title === 'INFLUENCE TRANSLATION')).toBeUndefined();
+  });
+
+  it('omits constraints footer when MODULES.CONSTRAINTS is false', () => {
+    const output = compilePromptV2({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        CONSTRAINTS: false,
+      },
+    });
+
+    expect(output.compiledPrompt).not.toContain('CONSTRAINTS FOOTER');
+    expect(output.compiledPrompt).not.toContain('REQUIRE: clear foreground subject; readable depth layers');
+    expect(output.debugSections.find((section) => section.title === 'CONSTRAINTS FOOTER')).toBeUndefined();
+  });
+
+  it('reports included and skipped modules in debug sections', () => {
+    const output = compilePromptV2({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        INFLUENCE_ENGINE: false,
+        CONSTRAINTS: false,
+      },
+    });
+
+    const moduleSection = output.debugSections.find((section) => section.title === 'MODULES');
+    expect(moduleSection).toBeTruthy();
+    expect(moduleSection?.text).toContain('included=');
+    expect(moduleSection?.text).toContain('skipped=');
+    expect(moduleSection?.text).toContain('INFLUENCE_ENGINE');
+    expect(moduleSection?.text).toContain('CONSTRAINTS');
   });
 });

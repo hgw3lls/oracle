@@ -64,6 +64,22 @@ const constraintsFooter = (schema: SchemaV2) => {
   return ['CONSTRAINTS FOOTER', require, forbid].filter(Boolean).join('\n');
 };
 
+const paletteFooter = (schema: SchemaV2) => [
+  'PALETTE FOOTER',
+  schema.lockPalette ? 'palette-lock=enabled' : 'palette-lock=disabled',
+  `style-token-count=${schema.styleTokens.length}`,
+].join('\n');
+
+const appendIfEnabled = (
+  enabled: boolean,
+  lines: Array<string | null>,
+  line: string | null,
+) => {
+  if (enabled) {
+    lines.push(line);
+  }
+};
+
 export const compilePromptV2 = (schemaInput: SchemaV2, frameOverrides: Partial<SchemaV2> = {}): CompilePromptV2Result => {
   const schema = migrateToV2({ ...schemaInput, ...frameOverrides });
   const influence = influenceBehaviors(schema);
@@ -71,8 +87,11 @@ export const compilePromptV2 = (schemaInput: SchemaV2, frameOverrides: Partial<S
   const seedJitter = jitterFromSeed(schema.seed, `${schema.subject}:${schema.hallucination}`);
   const hallucinationBias = Math.round((schema.hallucination + seedJitter * 100) * 10) / 10;
 
-  const sections: DebugSection[] = [
-    {
+  const modules = schema.MODULES;
+  const sections: DebugSection[] = [];
+
+  if (modules.INPUT) {
+    sections.push({
       title: 'INPUT',
       text: [
         `mode=${schema.mode}`,
@@ -80,15 +99,21 @@ export const compilePromptV2 = (schemaInput: SchemaV2, frameOverrides: Partial<S
         `seed=${schema.seed}`,
         `hallucination=${hallucinationBias}`,
       ].join('\n'),
-    },
-    {
+    });
+  }
+
+  if (modules.INFLUENCE_ENGINE) {
+    sections.push({
       title: 'INFLUENCE TRANSLATION',
       text: [
         `token-influences=${influence.mapped || 'none'}`,
         ...influence.behaviors.map((b, i) => `behavior-${i + 1}=${b}`),
       ].join('\n'),
-    },
-    {
+    });
+  }
+
+  if (modules.HYPNA_MATRIX) {
+    sections.push({
       title: 'EVOLUTION',
       text: [
         `enabled=${schema.evolveEnabled}`,
@@ -96,28 +121,70 @@ export const compilePromptV2 = (schemaInput: SchemaV2, frameOverrides: Partial<S
         `curve=${schema.curve}`,
         `range=${schema.startH}->${schema.endH}`,
       ].join('\n'),
-    },
-    {
+    });
+  }
+
+  if (modules.PROMPT_GENOME) {
+    sections.push({
       title: 'HUMANIZER',
       text: `level=${schema.humanizerLevel}\nrange=${schema.humanizerMin}-${schema.humanizerMax}`,
-    },
+    });
+  }
+
+  const footer = modules.CONSTRAINTS ? constraintsFooter(schema) : '';
+  const palette = modules.PALETTE ? paletteFooter(schema) : '';
+  const compiledLines: Array<string | null> = [
+    'HYPNAGNOSIS PROMPT V2',
+    modules.INPUT ? `Subject: ${schema.subject || 'Unnamed subject'}` : null,
   ];
 
-  const footer = constraintsFooter(schema);
-
-  const compiledPrompt = [
-    'HYPNAGNOSIS PROMPT V2',
-    `Subject: ${schema.subject || 'Unnamed subject'}`,
+  appendIfEnabled(
+    modules.INFLUENCE_ENGINE,
+    compiledLines,
     `Render intent: ${influence.behaviors.join('; ')}.`,
+  );
+
+  appendIfEnabled(
+    modules.HYPNA_MATRIX,
+    compiledLines,
     `Evolution path: ${schema.evolvePathPreset}, curve=${schema.curve}, hallucination-range=${schema.startH}-${schema.endH}.`,
+  );
+
+  appendIfEnabled(
+    modules.PROMPT_GENOME,
+    compiledLines,
     `Humanization: level ${schema.humanizerLevel}, min/max ${schema.humanizerMin}/${schema.humanizerMax}.`,
-    schema.notes ? `Notes: ${schema.notes}` : null,
-    footer || null,
-  ].filter(Boolean).join('\n');
+  );
+
+  compiledLines.push(schema.notes ? `Notes: ${schema.notes}` : null);
+  compiledLines.push(palette || null);
+  compiledLines.push(footer || null);
+
+  const moduleNames = Object.keys(modules) as Array<keyof SchemaV2['MODULES']>;
+  const includedModules = moduleNames.filter((name) => modules[name]);
+  const skippedModules = moduleNames.filter((name) => !modules[name]);
+
+  const debugSections: DebugSection[] = [
+    {
+      title: 'MODULES',
+      text: [
+        `included=${includedModules.join(', ') || '(none)'}`,
+        `skipped=${skippedModules.join(', ') || '(none)'}`,
+      ].join('\n'),
+    },
+    ...sections,
+  ];
+
+  if (palette) {
+    debugSections.push({ title: 'PALETTE FOOTER', text: palette });
+  }
+  if (footer) {
+    debugSections.push({ title: 'CONSTRAINTS FOOTER', text: footer });
+  }
 
   return {
-    compiledPrompt,
-    debugSections: footer ? [...sections, { title: 'CONSTRAINTS FOOTER', text: footer }] : sections,
+    compiledPrompt: compiledLines.filter(Boolean).join('\n'),
+    debugSections,
   };
 };
 
