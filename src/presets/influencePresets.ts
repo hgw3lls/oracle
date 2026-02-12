@@ -1,129 +1,100 @@
-import type { SchemaV2 } from '../schema/hypnagnosisSchemaV2';
-
-export type InfluenceWeights = {
-  spray: number;
-  smear: number;
-  collage: number;
-  networkMap: number;
-  occultGeometry: number;
-  printMaterial: number;
-};
+import { type InfluenceWeightKey, type SchemaV2 } from '../schema/hypnagnosisSchemaV2';
 
 export type InfluencePreset = {
   name: 'BRUS_LOMBARDI' | 'BACON_COLLAPSE' | 'BASQUIAT_OCCULT' | 'PRINT_PURITY';
-  influenceWeights: InfluenceWeights;
-  visualGrammar: Partial<SchemaV2>;
+  influenceWeights: Record<InfluenceWeightKey, number>;
+  materialBehaviors?: Partial<SchemaV2['INFLUENCE-ENGINE']['MATERIAL-BEHAVIORS']>;
 };
 
-const clampWeight = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+export const isInfluenceWeightInBounds = (v: number) => v >= 0 && v <= 100;
 
-const makePreset = (preset: InfluencePreset): InfluencePreset => ({
+const mk = (preset: InfluencePreset): InfluencePreset => ({
   ...preset,
-  influenceWeights: {
-    spray: clampWeight(preset.influenceWeights.spray),
-    smear: clampWeight(preset.influenceWeights.smear),
-    collage: clampWeight(preset.influenceWeights.collage),
-    networkMap: clampWeight(preset.influenceWeights.networkMap),
-    occultGeometry: clampWeight(preset.influenceWeights.occultGeometry),
-    printMaterial: clampWeight(preset.influenceWeights.printMaterial),
-  },
+  influenceWeights: Object.fromEntries(Object.entries(preset.influenceWeights).map(([k, v]) => [k, clamp(v)])) as Record<InfluenceWeightKey, number>,
 });
 
-export const BRUS_LOMBARDI = makePreset({
+export const BRUS_LOMBARDI = mk({
   name: 'BRUS_LOMBARDI',
-  influenceWeights: { spray: 78, smear: 62, collage: 45, networkMap: 88, occultGeometry: 42, printMaterial: 38 },
-  visualGrammar: {
-    mutateStrength: 68,
-    humanizerLevel: 64,
-    styleTokens: ['STYLE.CONSPIRACY_DIAGRAM', 'STYLE.HYPNAGOGIC'],
-    curve: 'exp',
+  influenceWeights: {
+    'ink-spray-field': 88,
+    'meat-brush-field': 34,
+    'collage-break-field': 45,
+    'network-map-field': 90,
+    'occult-diagram-field': 36,
+    'graphic-novel-field': 41,
+    'print-material-field': 52,
+    'hand-drawn-field': 49,
   },
 });
 
-export const BACON_COLLAPSE = makePreset({
+export const BACON_COLLAPSE = mk({
   name: 'BACON_COLLAPSE',
-  influenceWeights: { spray: 55, smear: 92, collage: 40, networkMap: 36, occultGeometry: 58, printMaterial: 28 },
-  visualGrammar: {
-    mutateStrength: 84,
-    humanizerLevel: 72,
-    styleTokens: ['STYLE.NEWWEIRD', 'STYLE.HYPNAGOGIC'],
-    curve: 's-curve',
+  influenceWeights: {
+    'ink-spray-field': 38,
+    'meat-brush-field': 93,
+    'collage-break-field': 44,
+    'network-map-field': 28,
+    'occult-diagram-field': 42,
+    'graphic-novel-field': 31,
+    'print-material-field': 26,
+    'hand-drawn-field': 55,
   },
 });
 
-export const BASQUIAT_OCCULT = makePreset({
+export const BASQUIAT_OCCULT = mk({
   name: 'BASQUIAT_OCCULT',
-  influenceWeights: { spray: 82, smear: 74, collage: 58, networkMap: 50, occultGeometry: 90, printMaterial: 44 },
-  visualGrammar: {
-    mutateStrength: 79,
-    humanizerLevel: 70,
-    styleTokens: ['STYLE.OCCULT', 'STYLE.GRAPHIC_SCORE'],
-    curve: 'linear',
+  influenceWeights: {
+    'ink-spray-field': 66,
+    'meat-brush-field': 52,
+    'collage-break-field': 89,
+    'network-map-field': 47,
+    'occult-diagram-field': 91,
+    'graphic-novel-field': 74,
+    'print-material-field': 39,
+    'hand-drawn-field': 72,
   },
 });
 
-export const PRINT_PURITY = makePreset({
+export const PRINT_PURITY = mk({
   name: 'PRINT_PURITY',
-  influenceWeights: { spray: 18, smear: 26, collage: 46, networkMap: 40, occultGeometry: 30, printMaterial: 94 },
-  visualGrammar: {
-    mode: 'PRINT',
-    mutateStrength: 24,
-    humanizerLevel: 48,
-    styleTokens: ['STYLE.PRINT', 'STYLE.GRAPHIC_SCORE'],
-    curve: 'linear',
+  influenceWeights: {
+    'ink-spray-field': 18,
+    'meat-brush-field': 22,
+    'collage-break-field': 35,
+    'network-map-field': 40,
+    'occult-diagram-field': 24,
+    'graphic-novel-field': 48,
+    'print-material-field': 96,
+    'hand-drawn-field': 44,
   },
 });
 
-export const INFLUENCE_PRESETS: InfluencePreset[] = [
-  BRUS_LOMBARDI,
-  BACON_COLLAPSE,
-  BASQUIAT_OCCULT,
-  PRINT_PURITY,
-];
+export const INFLUENCE_PRESETS = [BRUS_LOMBARDI, BACON_COLLAPSE, BASQUIAT_OCCULT, PRINT_PURITY];
+export const INFLUENCE_PRESET_MAP = Object.fromEntries(INFLUENCE_PRESETS.map((preset) => [preset.name, preset])) as Record<InfluencePreset['name'], InfluencePreset>;
 
-export const INFLUENCE_PRESET_MAP = Object.fromEntries(
-  INFLUENCE_PRESETS.map((preset) => [preset.name, preset]),
-) as Record<InfluencePreset['name'], InfluencePreset>;
-
-const weightPatchToSchema = (weights: InfluenceWeights): Partial<SchemaV2> => ({
-  hallucination: clampWeight((weights.spray + weights.occultGeometry) / 2),
-  mutateStrength: clampWeight((weights.smear + weights.collage) / 2),
-  humanizerLevel: clampWeight((weights.printMaterial + weights.collage) / 2),
-  humanizerMin: clampWeight(Math.min(weights.smear, weights.printMaterial)),
-  humanizerMax: clampWeight(Math.max(weights.spray, weights.networkMap, weights.occultGeometry)),
+export const applyInfluencePreset = (schema: SchemaV2, preset: InfluencePreset): SchemaV2 => ({
+  ...schema,
+  'INFLUENCE-ENGINE': {
+    ...schema['INFLUENCE-ENGINE'],
+    'INFLUENCE-WEIGHTS': {
+      ...schema['INFLUENCE-ENGINE']['INFLUENCE-WEIGHTS'],
+      ...preset.influenceWeights,
+    },
+    'MATERIAL-BEHAVIORS': {
+      ...schema['INFLUENCE-ENGINE']['MATERIAL-BEHAVIORS'],
+      ...(preset.materialBehaviors || {}),
+    },
+  },
 });
 
-const mergeUniqueStyleTokens = (base: string[], extra: string[]) => Array.from(new Set([...base, ...extra]));
-
-export const applyInfluencePreset = (schema: SchemaV2, preset: InfluencePreset): SchemaV2 => {
-  const weightPatch = weightPatchToSchema(preset.influenceWeights);
-  const styleTokens = mergeUniqueStyleTokens(schema.styleTokens, preset.visualGrammar.styleTokens || []);
-
+export const randomizeInfluenceWithinBounds = (schema: SchemaV2, rng: () => number = Math.random): SchemaV2 => {
+  const next = Object.fromEntries(Object.entries(schema['INFLUENCE-ENGINE']['INFLUENCE-WEIGHTS']).map(([k, v]) => [k, clamp(v + Math.round(rng() * 20 - 10))])) as Record<InfluenceWeightKey, number>;
   return {
     ...schema,
-    ...weightPatch,
-    ...preset.visualGrammar,
-    styleTokens,
+    'INFLUENCE-ENGINE': {
+      ...schema['INFLUENCE-ENGINE'],
+      'INFLUENCE-WEIGHTS': next,
+    },
   };
 };
-
-export const randomizeInfluenceWithinBounds = (
-  schema: SchemaV2,
-  rng: () => number = Math.random,
-): SchemaV2 => {
-  const perturb = (value: number) => clampWeight(value + Math.round((rng() * 20) - 10));
-
-  const nextMin = perturb(schema.humanizerMin);
-  const nextMax = Math.max(nextMin, perturb(schema.humanizerMax));
-
-  return {
-    ...schema,
-    hallucination: perturb(schema.hallucination),
-    mutateStrength: perturb(schema.mutateStrength),
-    humanizerLevel: perturb(schema.humanizerLevel),
-    humanizerMin: nextMin,
-    humanizerMax: nextMax,
-  };
-};
-
-export const isInfluenceWeightInBounds = (value: number) => value >= 0 && value <= 100;
