@@ -63,6 +63,12 @@ const intensityLabel = (value: number, cuts: [number, string][]): string => {
   return cuts[cuts.length - 1][1];
 };
 
+const cleanPhrase = (value: Primitive): string | null => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).replace(/\s+/g, ' ').trim();
+  return normalized || null;
+};
+
 const buildRenderIntent = (state: CompilePromptState, styleExpanded: string): Dict => {
   const h = numeric(state.hallucination) ?? 50;
   const matrix = state.hypnaMatrix || {};
@@ -81,22 +87,47 @@ const buildRenderIntent = (state: CompilePromptState, styleExpanded: string): Di
   const texture = intensityLabel(humanizerLevel, [[30, 'clean surfaces'], [65, 'textured surfaces'], [100, 'handmade imperfections']]);
 
   const stylePhrase = styleExpanded || 'hybrid visual language';
-  const subject = state.subject || 'abstract subject';
-  const notes = state.notes || '';
+  const subject = cleanPhrase(state.subject) || 'abstract subject';
+  const notes = cleanPhrase(state.notes);
+  const comp = state.autoComp || {};
+  const vibe = state.vibeRefs || {};
+  const print = state.printLayer || {};
+  const sleep = state.sleepState || {};
+
+  const compositionHints = [
+    cleanPhrase(comp.composition),
+    cleanPhrase(comp.framing),
+    cleanPhrase(comp.horizon),
+    cleanPhrase(comp.tension),
+  ].filter(Boolean).join(', ');
+
+  const atmosphereHints = [
+    cleanPhrase(vibe.description),
+    cleanPhrase(sleep['neuro-state']),
+    cleanPhrase(sleep['visual-drift']),
+  ].filter(Boolean).join(', ');
+
+  const materialHints = [
+    cleanPhrase(print.texture),
+    cleanPhrase(print['print-mode']),
+  ].filter(Boolean).join(', ');
 
   const primaryPrompt = [
-    `${subject}.`,
-    `${stylePhrase}.`,
-    `${detail}, ${surreal}, ${camera}, ${motion}, ${texture}.`,
-    notes ? `Additional direction: ${notes}.` : null,
-    'Image generation prompt; prioritize coherent composition, legible focal hierarchy, and physically plausible lighting.',
+    `Create a single still image with ${subject} as the unmistakable focal subject.`,
+    `Style direction: ${stylePhrase}.`,
+    `Render profile: ${detail}, ${surreal}, ${camera}, ${motion}, ${texture}.`,
+    compositionHints ? `Composition cues: ${compositionHints}. Keep depth readable and perspective internally consistent.` : 'Composition cues: establish a clear foreground, midground, and background with readable depth.',
+    atmosphereHints ? `Atmosphere and mood cues: ${atmosphereHints}.` : null,
+    materialHints ? `Material and surface cues: ${materialHints}.` : null,
+    notes ? `Creative notes: ${notes}.` : null,
+    'Output requirements: cinematic but plausible lighting, disciplined value structure, intentional color harmony, and no accidental text or logos.',
   ].filter(Boolean).join(' ');
 
   const negativePrompt = [
-    'blurry, low-resolution, jpeg artifacts, watermark, text overlay, logo',
-    'deformed anatomy, broken perspective, duplicated limbs, extra fingers',
-    'flat lighting, muddy colors, overexposed highlights, crushed shadows',
-    'unintentional collage seams, incoherent geometry, noisy background clutter',
+    'blurry, low-resolution, jpeg artifacts, watermark, text overlay, logo, signature',
+    'deformed anatomy, broken perspective, duplicated limbs, extra fingers, malformed hands, crossed eyes',
+    'flat lighting, muddy colors, overexposed highlights, crushed shadows, weak focal contrast',
+    'unintentional collage seams, incoherent geometry, noisy background clutter, tangent-heavy composition',
   ].join(', ');
 
   return {
