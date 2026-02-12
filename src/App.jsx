@@ -58,12 +58,6 @@ const snapshotToState = (snapshot, idx, panelName, stateName) => {
   };
 };
 
-const safeRounded = (value, fallback) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  return Math.round(numeric);
-};
-
 const EXAMPLE_HH = `HANDRAW-HUMAN
 subject: Ash-fall cathedrals
 HYPNA-MATRIX
