@@ -13,6 +13,7 @@ import { PresetSchema, formatPresetIssues } from './presets/schema';
 import ControlsPanel from './ui/ControlsPanel';
 import StateBrowserPanel from './ui/StateBrowserPanel';
 import OutputPanel from './ui/OutputPanel';
+import WizardPanel from './ui/WizardPanel';
 
 const snapshotToState = (snapshot, idx, panelName, stateName) => ({
   mode: 'FULL',
@@ -113,6 +114,14 @@ export default function App() {
     }));
   };
 
+
+  const applyForm = (next) => {
+    setForm(next);
+    setActiveState(0);
+    setSelectedIndexes([0]);
+    setSelectedChainNodeId(null);
+    setSelectionMode('manual');
+  };
   const manifest = useMemo(() => generateBatches(form), [form]);
 
   const triptychBundle = useMemo(() => generateTriptych(
@@ -346,13 +355,12 @@ export default function App() {
 
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text);
-      const checked = PresetSchema.safeParse(parsed);
+      const merged = parsePreset(text);
+      const checked = PresetSchema.safeParse(merged);
       if (!checked.success) {
         setPresetError(`Preset validation failed:\n${formatPresetIssues(checked.error.issues)}`);
         return;
       }
-      const merged = parsePreset(text);
       setForm(merged);
       setPresetError('');
       setActiveState(0);
@@ -457,9 +465,10 @@ export default function App() {
     <main className="app-shell">
       <header className="app-header">
         HYPNAGNOSIS — WEB v2
-        <div className="top-tabs">
+        <div className="top-tabs" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           <button type="button" className={view === 'standard' ? 'tab-btn active' : 'tab-btn'} onClick={() => { setView('standard'); setActiveState(0); setSelectedIndexes([0]); }}>Standard</button>
           <button type="button" className={view === 'triptych' ? 'tab-btn active' : 'tab-btn'} onClick={() => { setView('triptych'); setActiveState(0); setSelectedIndexes([0]); }}>Triptych</button>
+          <button type="button" className={view === 'wizard' ? 'tab-btn active' : 'tab-btn'} onClick={() => { setView('wizard'); }}>Wizard</button>
         </div>
         <div className="button-row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
           <label>
@@ -508,50 +517,61 @@ export default function App() {
       </header>
 
       <section className="layout">
-        <ControlsPanel
-          form={form}
-          patch={patch}
-          toggleStyleToken={toggleStyleToken}
-          view={view}
-          onImportPreset={onImportPreset}
-          onSavePreset={onSavePreset}
-          presetError={presetError}
-          hhText={hhText}
-          onHHTextChange={setHHText}
-          onParseApplyHH={onParseApplyHH}
-          onLoadExampleHH={onLoadExampleHH}
-          onClearHH={onClearHH}
-          hhErrors={hhErrors}
-          chainConfig={chainConfig}
-          onPatchChainConfig={onPatchChainConfig}
-          onRunChain={onRunChain}
-        />
-        <StateBrowserPanel
-          series={series}
-          activeState={activeState}
-          setActiveState={onSelectStateIndex}
-          selectedIndexes={selectedIndexes}
-          setSelectedIndexes={setSelectedIndexes}
-          animation={animationConfig}
-          onSelectAnimationFrame={selectAnimationFrame}
-          animationFrames={animationFrames}
-          chainResult={chainResult}
-          selectedChainNodeId={selectedChainNodeId}
-          onSelectChainNode={onSelectChainNode}
-          selectionMode={selectionMode}
-        />
-        <OutputPanel
-          state={state}
-          systemDocument={systemDocument}
-          bootloaderDocument={bootloaderDocument}
-          manifest={view === 'triptych' ? triptychBundle.manifest : manifest}
-          triptychMode={view === 'triptych'}
-          triptychStates={triptychSeries}
-          selectedStates={selectedStates}
-          animationFrame={effectiveAnimationFrame}
-          chainResult={chainResult}
-          onUseBestChainState={onUseBestChainState}
-        />
+        {view === 'wizard' ? (
+          <WizardPanel
+            form={form}
+            patch={patch}
+            applyForm={applyForm}
+            toggleStyleToken={toggleStyleToken}
+          />
+        ) : (
+          <>
+            <ControlsPanel
+              form={form}
+              patch={patch}
+              toggleStyleToken={toggleStyleToken}
+              view={view}
+              onImportPreset={onImportPreset}
+              onSavePreset={onSavePreset}
+              presetError={presetError}
+              hhText={hhText}
+              onHHTextChange={setHHText}
+              onParseApplyHH={onParseApplyHH}
+              onLoadExampleHH={onLoadExampleHH}
+              onClearHH={onClearHH}
+              hhErrors={hhErrors}
+              chainConfig={chainConfig}
+              onPatchChainConfig={onPatchChainConfig}
+              onRunChain={onRunChain}
+            />
+            <StateBrowserPanel
+              series={series}
+              activeState={activeState}
+              setActiveState={onSelectStateIndex}
+              selectedIndexes={selectedIndexes}
+              setSelectedIndexes={setSelectedIndexes}
+              animation={animationConfig}
+              onSelectAnimationFrame={selectAnimationFrame}
+              animationFrames={animationFrames}
+              chainResult={chainResult}
+              selectedChainNodeId={selectedChainNodeId}
+              onSelectChainNode={onSelectChainNode}
+              selectionMode={selectionMode}
+            />
+            <OutputPanel
+              state={state}
+              systemDocument={systemDocument}
+              bootloaderDocument={bootloaderDocument}
+              manifest={view === 'triptych' ? triptychBundle.manifest : manifest}
+              triptychMode={view === 'triptych'}
+              triptychStates={triptychSeries}
+              selectedStates={selectedStates}
+              animationFrame={effectiveAnimationFrame}
+              chainResult={chainResult}
+              onUseBestChainState={onUseBestChainState}
+            />
+          </>
+        )}
       </section>
     </main>
   );
