@@ -21,6 +21,43 @@ const safeRounded = (value, fallback) => {
   return Math.round(numeric);
 };
 
+const NUMERIC_FALLBACKS = {
+  hallucination: 50,
+  temporal: 55,
+  material: 55,
+  space: 55,
+  symbol: 55,
+  agency: 55,
+  grain: 40,
+  lineWobble: 40,
+  erasure: 32,
+  annotation: 42,
+  paletteValue: 50,
+  gestureValue: 48,
+};
+
+const deriveStateFromSource = ({ baseState, sourceState, metadata, lineWobbleKey = 'line-wobble', paletteKey = 'palette', gestureKey = 'gesture' }) => {
+  const resolvedBaseState = baseState || {};
+  const resolvedSourceState = sourceState || {};
+
+  return {
+    ...resolvedBaseState,
+    ...metadata,
+    hallucination: safeRounded(resolvedSourceState.hallucination, safeRounded(resolvedBaseState.hallucination, NUMERIC_FALLBACKS.hallucination)),
+    temporal: safeRounded(resolvedSourceState.temporal, safeRounded(resolvedBaseState.temporal, NUMERIC_FALLBACKS.temporal)),
+    material: safeRounded(resolvedSourceState.material, safeRounded(resolvedBaseState.material, NUMERIC_FALLBACKS.material)),
+    space: safeRounded(resolvedSourceState.space, safeRounded(resolvedBaseState.space, NUMERIC_FALLBACKS.space)),
+    symbol: safeRounded(resolvedSourceState.symbol, safeRounded(resolvedBaseState.symbol, NUMERIC_FALLBACKS.symbol)),
+    agency: safeRounded(resolvedSourceState.agency, safeRounded(resolvedBaseState.agency, NUMERIC_FALLBACKS.agency)),
+    grain: safeRounded(resolvedSourceState.grain, safeRounded(resolvedBaseState.grain, NUMERIC_FALLBACKS.grain)),
+    lineWobble: safeRounded(resolvedSourceState[lineWobbleKey], safeRounded(resolvedBaseState.lineWobble, NUMERIC_FALLBACKS.lineWobble)),
+    erasure: safeRounded(resolvedSourceState.erasure, safeRounded(resolvedBaseState.erasure, NUMERIC_FALLBACKS.erasure)),
+    annotation: safeRounded(resolvedSourceState.annotation, safeRounded(resolvedBaseState.annotation, NUMERIC_FALLBACKS.annotation)),
+    paletteValue: safeRounded(resolvedSourceState[paletteKey], safeRounded(resolvedBaseState.paletteValue, NUMERIC_FALLBACKS.paletteValue)),
+    gestureValue: safeRounded(resolvedSourceState[gestureKey], safeRounded(resolvedBaseState.gestureValue, NUMERIC_FALLBACKS.gestureValue)),
+  };
+};
+
 const snapshotToState = (snapshot, idx, panelName, stateName) => {
   const params = snapshot?.params || snapshot || {};
   const palette = safeRounded(params.palette ?? params.paletteValue, 50);
@@ -111,12 +148,16 @@ export default function App() {
     initialLoop: true,
   });
 
-  const patch = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const resetManualSelection = () => {
     setActiveState(0);
     setSelectedIndexes([0]);
     setSelectedChainNodeId(null);
     setSelectionMode('manual');
+  };
+
+  const patch = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    resetManualSelection();
   };
 
   const toggleStyleToken = (token, checked) => {
@@ -129,10 +170,7 @@ export default function App() {
 
   const applyForm = (next) => {
     setForm(next);
-    setActiveState(0);
-    setSelectedIndexes([0]);
-    setSelectedChainNodeId(null);
-    setSelectionMode('manual');
+    resetManualSelection();
   };
   const manifest = useMemo(() => generateBatches(form), [form]);
 
@@ -191,47 +229,33 @@ export default function App() {
   const activeAnimationFrame = animationFrames[Math.max(0, Math.min(animationFrames.length - 1, animationConfig.index))] || null;
   const chainSelectedNode = chainResult?.nodes?.find((node) => node.id === selectedChainNodeId) || null;
   const chainNodeState = chainSelectedNode?.state || {};
-  const chainDerivedState = chainSelectedNode ? {
-    ...baseState,
-    stateName: chainSelectedNode.id,
-    flow: 'multi-agent-chain',
-    seed: form.seed,
-    hallucination: safeRounded(chainNodeState.hallucination, safeRounded(baseState?.hallucination, 50)),
-    temporal: safeRounded(chainNodeState.temporal, safeRounded(baseState?.temporal, 55)),
-    material: safeRounded(chainNodeState.material, safeRounded(baseState?.material, 55)),
-    space: safeRounded(chainNodeState.space, safeRounded(baseState?.space, 55)),
-    symbol: safeRounded(chainNodeState.symbol, safeRounded(baseState?.symbol, 55)),
-    agency: safeRounded(chainNodeState.agency, safeRounded(baseState?.agency, 55)),
-    grain: safeRounded(chainNodeState.grain, safeRounded(baseState?.grain, 40)),
-    lineWobble: safeRounded(chainNodeState['line-wobble'], safeRounded(baseState?.lineWobble, 40)),
-    erasure: safeRounded(chainNodeState.erasure, safeRounded(baseState?.erasure, 32)),
-    annotation: safeRounded(chainNodeState.annotation, safeRounded(baseState?.annotation, 42)),
-    paletteValue: safeRounded(chainNodeState.palette, safeRounded(baseState?.paletteValue, 50)),
-    gestureValue: safeRounded(chainNodeState.gesture, safeRounded(baseState?.gestureValue, 48)),
-    prompt: chainSelectedNode.compiledPrompt,
-    diffSummary: `chain score ${chainSelectedNode.score.toFixed(3)}`,
-  } : null;
+  const chainDerivedState = chainSelectedNode
+    ? deriveStateFromSource({
+      baseState,
+      sourceState: chainNodeState,
+      metadata: {
+        stateName: chainSelectedNode.id,
+        flow: 'multi-agent-chain',
+        seed: form.seed,
+        prompt: chainSelectedNode.compiledPrompt,
+        diffSummary: `chain score ${chainSelectedNode.score.toFixed(3)}`,
+      },
+    })
+    : null;
   const frameState = activeAnimationFrame?.state || {};
-  const frameDerivedState = activeAnimationFrame ? {
-    ...baseState,
-    stateName: `FRAME-${activeAnimationFrame.index + 1}`,
-    flow: 'animation-frame',
-    seed: activeAnimationFrame.seed,
-    hallucination: safeRounded(frameState.hallucination, safeRounded(baseState?.hallucination, 50)),
-    temporal: safeRounded(frameState.temporal, safeRounded(baseState?.temporal, 55)),
-    material: safeRounded(frameState.material, safeRounded(baseState?.material, 55)),
-    space: safeRounded(frameState.space, safeRounded(baseState?.space, 55)),
-    symbol: safeRounded(frameState.symbol, safeRounded(baseState?.symbol, 55)),
-    agency: safeRounded(frameState.agency, safeRounded(baseState?.agency, 55)),
-    grain: safeRounded(frameState.grain, safeRounded(baseState?.grain, 40)),
-    lineWobble: safeRounded(frameState['line-wobble'], safeRounded(baseState?.lineWobble, 40)),
-    erasure: safeRounded(frameState.erasure, safeRounded(baseState?.erasure, 32)),
-    annotation: safeRounded(frameState.annotation, safeRounded(baseState?.annotation, 42)),
-    paletteValue: safeRounded(frameState.palette, safeRounded(baseState?.paletteValue, 50)),
-    gestureValue: safeRounded(frameState.gesture, safeRounded(baseState?.gestureValue, 48)),
-    prompt: activeAnimationFrame.compiledPrompt,
-    diffSummary: activeAnimationFrame.meta?.diffSummary || 'frame snapshot',
-  } : null;
+  const frameDerivedState = activeAnimationFrame
+    ? deriveStateFromSource({
+      baseState,
+      sourceState: frameState,
+      metadata: {
+        stateName: `FRAME-${activeAnimationFrame.index + 1}`,
+        flow: 'animation-frame',
+        seed: activeAnimationFrame.seed,
+        prompt: activeAnimationFrame.compiledPrompt,
+        diffSummary: activeAnimationFrame.meta?.diffSummary || 'frame snapshot',
+      },
+    })
+    : null;
 
   const state = useMemo(() => {
     if (selectionMode === 'chain' && chainDerivedState) return chainDerivedState;
@@ -299,12 +323,13 @@ export default function App() {
   };
 
   const selectAnimationFrame = (index) => {
-    playback.setIndex(index);
-    setAnimationConfig((prev) => ({ ...prev, index }));
+    const boundedIndex = Math.max(0, Math.min(animationFrames.length - 1, index));
+    playback.setIndex(boundedIndex);
+    setAnimationConfig((prev) => ({ ...prev, index: boundedIndex }));
     setSelectionMode('frame');
     setSelectedChainNodeId(null);
     if (series.length) {
-      setActiveState(Math.max(0, Math.min(series.length - 1, index)));
+      setActiveState(Math.max(0, Math.min(series.length - 1, boundedIndex)));
     }
   };
 
@@ -377,8 +402,7 @@ export default function App() {
       }
       setForm(merged);
       setPresetError('');
-      setActiveState(0);
-      setSelectedIndexes([0]);
+      resetManualSelection();
     } catch (error) {
       setPresetError(`Unable to import preset JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -396,9 +420,7 @@ export default function App() {
 
     const next = applyHHToState(parsed, form);
     setForm(next);
-    setActiveState(0);
-    setSelectedIndexes([0]);
-    setSelectionMode('manual');
+    resetManualSelection();
   };
 
   const onLoadExampleHH = () => {
@@ -470,9 +492,7 @@ export default function App() {
       notes: `${prev.notes || ''}
 [CHAIN BEST] ${bestNode.id} score=${bestNode.score?.toFixed?.(3) || bestNode.score}`.trim(),
     }));
-    setActiveState(0);
-    setSelectedIndexes([0]);
-    setSelectionMode('manual');
+    resetManualSelection();
   };
 
   return (
