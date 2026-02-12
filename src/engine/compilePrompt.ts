@@ -50,20 +50,77 @@ const linesFromDict = (source: Dict = {}, preferredOrder: string[] = []): Array<
   return orderedKeys.map((key) => line(key, source[key]));
 };
 
+const numeric = (value: Primitive): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) return Number(value);
+  return null;
+};
+
+const intensityLabel = (value: number, cuts: [number, string][]): string => {
+  for (let i = 0; i < cuts.length; i += 1) {
+    if (value <= cuts[i][0]) return cuts[i][1];
+  }
+  return cuts[cuts.length - 1][1];
+};
+
+const buildRenderIntent = (state: CompilePromptState, styleExpanded: string): Dict => {
+  const h = numeric(state.hallucination) ?? 50;
+  const matrix = state.hypnaMatrix || {};
+  const gesture = state.autoGesture || {};
+  const humanizer = state.humanizer || {};
+
+  const symbol = numeric(matrix.symbol) ?? h;
+  const space = numeric(matrix.space) ?? 55;
+  const motionRaw = numeric(matrix.motion) ?? numeric(gesture.tempo) ?? numeric(gesture.pressure) ?? 50;
+  const humanizerLevel = numeric(humanizer['level(0-100)']) ?? 40;
+
+  const detail = intensityLabel(h, [[30, 'minimal detail'], [60, 'selective detail'], [85, 'high detail'], [100, 'maximal detail']]);
+  const surreal = intensityLabel(symbol, [[25, 'grounded realism'], [55, 'subtle surrealism'], [80, 'dreamlike surrealism'], [100, 'hallucinatory surrealism']]);
+  const camera = intensityLabel(space, [[35, 'tight framing'], [65, 'balanced framing'], [100, 'wide cinematic framing']]);
+  const motion = intensityLabel(motionRaw, [[30, 'still moment'], [60, 'gentle motion'], [85, 'dynamic motion'], [100, 'chaotic motion']]);
+  const texture = intensityLabel(humanizerLevel, [[30, 'clean surfaces'], [65, 'textured surfaces'], [100, 'handmade imperfections']]);
+
+  const stylePhrase = styleExpanded || 'hybrid visual language';
+  const subject = state.subject || 'abstract subject';
+  const notes = state.notes || '';
+
+  const primaryPrompt = [
+    `${subject}.`,
+    `${stylePhrase}.`,
+    `${detail}, ${surreal}, ${camera}, ${motion}, ${texture}.`,
+    notes ? `Additional direction: ${notes}.` : null,
+    'Image generation prompt; prioritize coherent composition, legible focal hierarchy, and physically plausible lighting.',
+  ].filter(Boolean).join(' ');
+
+  const negativePrompt = [
+    'blurry, low-resolution, jpeg artifacts, watermark, text overlay, logo',
+    'deformed anatomy, broken perspective, duplicated limbs, extra fingers',
+    'flat lighting, muddy colors, overexposed highlights, crushed shadows',
+    'unintentional collage seams, incoherent geometry, noisy background clutter',
+  ].join(', ');
+
+  return {
+    'primary-prompt': primaryPrompt,
+    'negative-prompt': negativePrompt,
+    'render-priority': 'composition > subject readability > style fidelity > micro-texture',
+  };
+};
+
 export const expandStyleTokens = (tokens: string[] = []): string => (
   tokens.map((token) => STYLE_TOKENS[token] || token).join('; ')
 );
 
 const sectionEnabledByMode = (mode: HypnaMode, section: string): boolean => {
-  if (mode === 'STYLE') return ['INPUT', 'STYLE', 'VIBE-REFS', 'HUMANIZER'].includes(section);
-  if (mode === 'GESTURE') return ['INPUT', 'AUTO-GESTURE', 'STATE-MAP', 'HUMANIZER', 'VIBE-REFS'].includes(section);
-  if (mode === 'PRINT') return ['INPUT', 'STYLE', 'PRINT-LAYER', 'HUMANIZER', 'VIBE-REFS'].includes(section);
+  if (mode === 'STYLE') return ['INPUT', 'STYLE', 'VIBE-REFS', 'HUMANIZER', 'IMAGE-GENERATION'].includes(section);
+  if (mode === 'GESTURE') return ['INPUT', 'AUTO-GESTURE', 'STATE-MAP', 'HUMANIZER', 'VIBE-REFS', 'IMAGE-GENERATION'].includes(section);
+  if (mode === 'PRINT') return ['INPUT', 'STYLE', 'PRINT-LAYER', 'HUMANIZER', 'VIBE-REFS', 'IMAGE-GENERATION'].includes(section);
   if (mode === 'LIVE') return section !== 'PRINT-LAYER';
   return true;
 };
 
 export const compilePrompt = (state: CompilePromptState): string => {
   const styleExpanded = state.styleExpanded || expandStyleTokens(state.styleTokens || []);
+  const renderIntent = buildRenderIntent(state, styleExpanded);
 
   const inputBlock = block('INPUT', [
     line('mode', state.mode),
@@ -95,6 +152,7 @@ export const compilePrompt = (state: CompilePromptState): string => {
     block('PRINT-LAYER', linesFromDict(state.printLayer, ['print-mode', 'registration', 'texture', 'plate-palette'])),
     block('VIBE-REFS', linesFromDict(state.vibeRefs, ['description', 'images', 'policy'])),
     block('HUMANIZER', linesFromDict(state.humanizer, ['level(0-100)', 'qualities', 'notes'])),
+    block('IMAGE-GENERATION', linesFromDict(renderIntent, ['primary-prompt', 'negative-prompt', 'render-priority'])),
   ];
 
   const filtered = blocks
