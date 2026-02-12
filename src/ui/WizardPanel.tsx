@@ -18,6 +18,7 @@ const STEPS = [
   'State Map',
   'Hallucination Physics',
   'Influence & Materials',
+  'Palette',
   'Animation',
   'Review & Export',
 ] as const;
@@ -40,6 +41,7 @@ const STEP_MODULE_MAP: Partial<Record<(typeof STEPS)[number], keyof SchemaV2['MO
   'State Map': 'STATE_MAP',
   'Hallucination Physics': 'HALLUCINATION',
   'Influence & Materials': 'INFLUENCE_ENGINE',
+  Palette: 'PALETTE',
   Animation: 'ANIMATION',
 };
 
@@ -49,11 +51,11 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
   const [animationError, setAnimationError] = useState('');
 
   useEffect(() => {
-    setKeyframeText(JSON.stringify(form.animation.keyframes || [], null, 2));
-  }, [form.animation.keyframes]);
+    setKeyframeText(JSON.stringify(form.ANIMATION.keyframes || [], null, 2));
+  }, [form.ANIMATION.keyframes]);
 
   const compiled = useMemo(() => compilePromptV2(form), [form]);
-  const frames = useMemo(() => buildFrameSeries(form, compilePromptV2), [form]);
+  const frames = useMemo(() => buildFrameSeries(form), [form]);
 
   const onApplyKeyframes = () => {
     try {
@@ -62,10 +64,8 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
         setAnimationError('Keyframes JSON must be an array.');
         return;
       }
-      patch('animation', {
-        ...form.animation,
-        keyframes: parsed,
-      });
+      patch('ANIMATION', { ...form.ANIMATION, keyframes: parsed });
+      patch('animation', { ...form.animation, keyframes: parsed });
       setAnimationError('');
     } catch (error) {
       setAnimationError(`Unable to parse keyframes JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -77,7 +77,7 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
   };
 
   const onExportFrameSheet = () => {
-    exportTextFile('hypnagnosis-frame-prompt-sheet.txt', exportFramePromptSheet(frames));
+    exportTextFile('hypnagnosis-frame-prompt-sheet.txt', exportFramePromptSheet(frames, { every_n: form.ANIMATION.every_n }));
   };
 
   const applySchema = (next: SchemaV2) => {
@@ -261,14 +261,34 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
             </fieldset>
           ) : null}
 
+
+          {step === 'Palette' ? (
+            <fieldset>
+              <legend>Palette</legend>
+              <label>
+                Mode
+                <select value={form.PALETTE.mode} onChange={(e) => patch('PALETTE', { ...form.PALETTE, mode: e.target.value })}>
+                  <option value="RISO_PLATES">RISO_PLATES</option>
+                  <option value="DESCRIPTIVE">DESCRIPTIVE</option>
+                  <option value="IMAGE_EXTRACT">IMAGE_EXTRACT</option>
+                  <option value="COLOR_WHEEL">COLOR_WHEEL</option>
+                </select>
+              </label>
+              <label>
+                Descriptive text
+                <input value={form.PALETTE.descriptive.text} onChange={(e) => patch('PALETTE', { ...form.PALETTE, descriptive: { ...form.PALETTE.descriptive, text: e.target.value } })} />
+              </label>
+            </fieldset>
+          ) : null}
+
           {step === 'Animation' ? (
             <fieldset>
               <legend>Animation</legend>
               <label className="check-row">
                 <input
                   type="checkbox"
-                  checked={form.animation.enabled}
-                  onChange={(e) => patch('animation', { ...form.animation, enabled: e.target.checked })}
+                  checked={form.ANIMATION.enabled}
+                  onChange={(e) => patch('ANIMATION', { ...form.ANIMATION, enabled: e.target.checked })}
                 />
                 Enable animation
               </label>
@@ -278,8 +298,8 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
                   type="number"
                   min="1"
                   max="600"
-                  value={form.animation.frames}
-                  onChange={(e) => patch('animation', { ...form.animation, frames: Number(e.target.value) })}
+                  value={Math.round(form.ANIMATION.duration_s * form.ANIMATION.fps)}
+                  onChange={(e) => patch('ANIMATION', { ...form.ANIMATION, duration_s: Number(e.target.value) / Math.max(1, form.ANIMATION.fps) })}
                 />
               </label>
               <label>
@@ -312,7 +332,7 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
               <h4>Debug Sections</h4>
               <pre>{compiled.debugSections.map((section) => `${section.title}\n${section.text}`).join('\n\n')}</pre>
 
-              {form.animation.enabled ? (
+              {form.ANIMATION.enabled ? (
                 <>
                   <p><strong>Animation frames:</strong> {frames.length}</p>
                   <div className="button-row">
