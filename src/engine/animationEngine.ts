@@ -42,8 +42,7 @@ const setByPath = (obj: Record<string, unknown>, path: string, value: unknown) =
 export const interpolateAtTime = (schemaInput: SchemaV2, tRaw: number) => {
   const schema = migrateToV2(schemaInput);
   const t = clamp01(tRaw);
-  const sourceKeyframes = (schema.ANIMATION.keyframes?.length ? schema.ANIMATION.keyframes : schema.animation.keyframes) || [];
-  const keyframes = [...sourceKeyframes].sort((a, b) => a.t - b.t);
+  const keyframes = [...(schema.ANIMATION.keyframes || [])].sort((a, b) => a.t - b.t);
   const allowed = keyframes.map((kf) => ({
     ...kf,
     curves: Object.fromEntries(Object.entries(kf.curves).filter(([curve]) => {
@@ -73,22 +72,17 @@ export const interpolateAtTime = (schemaInput: SchemaV2, tRaw: number) => {
     }
   });
 
-  if (allowed.length) {
-    const closest = allowed.reduce((acc, frame) => (Math.abs(frame.t - t) < Math.abs(acc.t - t) ? frame : acc), allowed[0]);
-    if (closest?.state && schema.MODULES.STATE_MAP) setByPath(overrides, 'STATE-MAP.state-name', closest.state);
-  }
+  const closest = allowed.reduce((acc, frame) => (Math.abs(frame.t - t) < Math.abs(acc.t - t) ? frame : acc), allowed[0]);
+  if (closest?.state && schema.MODULES.STATE_MAP) setByPath(overrides, 'STATE-MAP.state-name', closest.state);
 
   return overrides as Partial<SchemaV2>;
 };
 
 export const buildFrameSeries = (schemaInput: SchemaV2) => {
   const schema = migrateToV2(schemaInput);
-  const animEnabled = schema.MODULES.ANIMATION && (schema.ANIMATION.enabled || schema.animation.enabled);
-  if (!animEnabled) return [];
+  if (!schema.MODULES.ANIMATION || !schema.ANIMATION.enabled) return [];
 
-  const fps = schema.ANIMATION.fps || 12;
-  const duration = schema.ANIMATION.duration_s || (schema.animation.frames / Math.max(1, fps));
-  const totalFrames = Math.max(1, Math.floor(duration * fps));
+  const totalFrames = Math.max(1, Math.floor(schema.ANIMATION.duration_s * schema.ANIMATION.fps));
   return Array.from({ length: totalFrames }, (_, frameIndex) => {
     const t = totalFrames <= 1 ? 0 : frameIndex / (totalFrames - 1);
     const frameOverrides = interpolateAtTime(schema, t);

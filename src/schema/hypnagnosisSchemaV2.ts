@@ -1,5 +1,3 @@
-import { HUMANIZER_QUALITIES } from '../models/schema';
-
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends Array<infer U>
     ? Array<DeepPartial<U>>
@@ -9,37 +7,22 @@ export type DeepPartial<T> = {
 };
 
 export type HypnagnosisMode = 'FULL' | 'STYLE' | 'GESTURE' | 'PRINT' | 'LIVE';
-export type EvolutionCurve = 'linear' | 's-curve' | 'exp';
 export type PaletteMode = 'RISO_PLATES' | 'DESCRIPTIVE' | 'IMAGE_EXTRACT' | 'COLOR_WHEEL';
 export type ExtractMethod = 'median_cut' | 'kmeans';
 export type WheelHarmony = 'complementary' | 'analogous' | 'triadic' | 'split_complementary' | 'tetradic' | 'monochrome';
 
-export type HumanizerQualityKey = (typeof HUMANIZER_QUALITIES)[number][0];
-export type HumanizerQualitiesMap = Record<HumanizerQualityKey, boolean>;
+export type InfluenceWeightKey =
+  | 'ink-spray-field'
+  | 'meat-brush-field'
+  | 'collage-break-field'
+  | 'network-map-field'
+  | 'occult-diagram-field'
+  | 'graphic-novel-field'
+  | 'print-material-field'
+  | 'hand-drawn-field';
 
-export type ConstraintBlock = {
-  forbid: string[];
-  require: string[];
-};
-
-export type AnimationTimelinePoint = {
-  at: number;
-  overrides: Partial<SchemaV2>;
-};
-
-export type AnimationKeyframeV2 = {
-  t: number;
-  state?: string;
-  curves: Record<string, number | string>;
-};
-
-export type AnimationConfigV2 = {
-  enabled: boolean;
-  frames: number;
-  curve: EvolutionCurve;
-  timeline: AnimationTimelinePoint[];
-  keyframes: AnimationKeyframeV2[];
-};
+export type InfluenceWeights = Record<InfluenceWeightKey, number>;
+export type MaterialBehaviors = Record<InfluenceWeightKey, string>;
 
 export type InfluenceWeightKey =
   | 'ink-spray-field'
@@ -64,60 +47,8 @@ export type ModuleToggleMap = {
   ANIMATION: boolean;
 };
 
-export type IgnoreRulesV2 = {
-  hard_disable: boolean;
-  preserve_state: boolean;
-};
-
 export type SchemaV2 = {
   schemaVersion: 2;
-
-  // legacy-compatible root fields
-  mode: HypnagnosisMode;
-  subject: string;
-  notes: string;
-  styleTokens: string[];
-  hallucination: number;
-  evolveEnabled: boolean;
-  evolveSteps: number;
-  evolvePathPreset: string;
-  startH: number;
-  endH: number;
-  curve: EvolutionCurve;
-  mutateEnabled: boolean;
-  mutateStrength: number;
-  mutateScope: string;
-  mutateMode: string;
-  mutateAnchor: string;
-  lockCore: boolean;
-  lockTexture: boolean;
-  lockPalette: boolean;
-  lockGesture: boolean;
-  seed: string;
-  batchCount: number;
-  batchPrefix: string;
-  triptychAuto: boolean;
-  triptychPanel1Name: string;
-  triptychPanel1State: string;
-  triptychPanel1Path: string;
-  triptychPanel1Steps: number;
-  triptychPanel2Name: string;
-  triptychPanel2State: string;
-  triptychPanel2Path: string;
-  triptychPanel2Steps: number;
-  triptychPanel3Name: string;
-  triptychPanel3State: string;
-  triptychPanel3Path: string;
-  triptychPanel3Steps: number;
-  humanizerLevel: number;
-  autoCopyCompiledPrompt: boolean;
-  humanizerMin: number;
-  humanizerMax: number;
-  humanizerQualities: HumanizerQualitiesMap;
-  constraints: ConstraintBlock;
-  animation: AnimationConfigV2;
-
-  // Schema V2 structured source of truth
   INPUT: { mode: HypnagnosisMode; 'batch-id': string; seed: string; notes: string; subject: string; styleTokens?: string[] };
   'STATE-MAP': { 'state-name': string; flow: string };
   HALLUCINATION: { level: number };
@@ -131,8 +62,8 @@ export type SchemaV2 = {
     'diagram-behavior': { node_bias: number; arc_noise: number; correspondence_lock: boolean };
   };
   'INFLUENCE-ENGINE': {
-    'INFLUENCE-WEIGHTS': Record<InfluenceWeightKey, number>;
-    'MATERIAL-BEHAVIORS': Record<InfluenceWeightKey, string>;
+    'INFLUENCE-WEIGHTS': InfluenceWeights;
+    'MATERIAL-BEHAVIORS': MaterialBehaviors;
   };
   PALETTE: {
     mode: PaletteMode;
@@ -141,67 +72,41 @@ export type SchemaV2 = {
     image_extract: { enabled: boolean; source_image_id: string; method: ExtractMethod; k: number; palette: Array<{ hex: string; weight: number }>; lock_palette: boolean };
     wheel: { base_hex: string; harmony: WheelHarmony; count: number; rotate_deg: number; palette: string[]; lock_palette: boolean };
   };
-  CONSTRAINTS: ConstraintBlock;
+  CONSTRAINTS: { forbid: string[]; require: string[] };
   ANIMATION: {
     enabled: boolean;
     fps: number;
     duration_s: number;
     export_mode: 'PROMPT_SHEET' | 'TIMELINE_JSON' | 'BOTH';
     every_n: number;
-    keyframes: AnimationKeyframeV2[];
+    keyframes: Array<{ t: number; state?: string; curves: Record<string, number | string> }>;
   };
-
   MODULES: ModuleToggleMap;
-  IGNORE_RULES: IgnoreRulesV2;
+  IGNORE_RULES: { hard_disable: true; preserve_state: true };
+
+  // legacy compatibility mirrors
+  mode: HypnagnosisMode;
+  subject: string;
+  notes: string;
+  styleTokens: string[];
+  seed: string;
+  batchPrefix: string;
+  hallucination: number;
+  startH: number;
+  endH: number;
+  curve: 'linear' | 's-curve' | 'exp';
+  mutateStrength: number;
+  humanizerLevel: number;
+  humanizerMin: number;
+  humanizerMax: number;
+  triptychPanel1State: string;
+  evolvePathPreset: string;
+  animation: { enabled: boolean; frames: number; curve: 'linear' | 's-curve' | 'exp'; timeline: Array<{ at: number; overrides: Partial<SchemaV2> }>; keyframes: Array<{ t: number; state?: string; curves: Record<string, number | string> }> };
 };
 
 export const defaultSchemaV2: SchemaV2 = {
   schemaVersion: 2,
-  mode: 'FULL',
-  subject: '',
-  notes: '',
-  styleTokens: ['STYLE.HYPNAGOGIC', 'STYLE.OCCULT'],
-  hallucination: 72,
-  evolveEnabled: true,
-  evolveSteps: 6,
-  evolvePathPreset: 'drift',
-  startH: 52,
-  endH: 92,
-  curve: 's-curve',
-  mutateEnabled: true,
-  mutateStrength: 45,
-  mutateScope: 'total',
-  mutateMode: 'recursive',
-  mutateAnchor: 'gesture+material',
-  lockCore: false,
-  lockTexture: false,
-  lockPalette: false,
-  lockGesture: false,
-  seed: 'oracle-v2-seed',
-  batchCount: 1,
-  batchPrefix: 'run',
-  triptychAuto: false,
-  triptychPanel1Name: 'STATE 1',
-  triptychPanel1State: 'ANCHOR',
-  triptychPanel1Path: 'collapse',
-  triptychPanel1Steps: 5,
-  triptychPanel2Name: 'STATE 2',
-  triptychPanel2State: 'POROUS',
-  triptychPanel2Path: 'drift',
-  triptychPanel2Steps: 5,
-  triptychPanel3Name: 'STATE 3',
-  triptychPanel3State: 'WATCHER',
-  triptychPanel3Path: 'fracture',
-  triptychPanel3Steps: 5,
-  humanizerLevel: 60,
-  autoCopyCompiledPrompt: false,
-  humanizerMin: 35,
-  humanizerMax: 88,
-  humanizerQualities: Object.fromEntries(HUMANIZER_QUALITIES.map(([key]) => [key, false])) as HumanizerQualitiesMap,
-  constraints: { forbid: [], require: [] },
-  animation: { enabled: false, frames: 24, curve: 's-curve', timeline: [], keyframes: [] },
-
-  INPUT: { mode: 'FULL', 'batch-id': 'run', seed: 'oracle-v2-seed', notes: '', subject: '', styleTokens: ['STYLE.HYPNAGOGIC', 'STYLE.OCCULT'] },
+  INPUT: { mode: 'FULL', 'batch-id': 'run', seed: 'oracle-v2-seed', notes: '', subject: '', styleTokens: [] },
   'STATE-MAP': { 'state-name': 'ANCHOR', flow: 'drift' },
   HALLUCINATION: { level: 72 },
   'HYPNA-MATRIX': { temporal: 58, material: 56, space: 52, symbol: 68, agency: 42 },
@@ -225,14 +130,14 @@ export const defaultSchemaV2: SchemaV2 = {
       'hand-drawn-field': 50,
     },
     'MATERIAL-BEHAVIORS': {
-      'ink-spray-field': 'Aerosolized mist and turbulent splatter recoil.',
-      'meat-brush-field': 'Smear and scrape passes with dragged pigment.',
-      'collage-break-field': 'Paper graft seams with abrupt overpaint joins.',
-      'network-map-field': 'Evidence arcs, nodes, and crossing connectors.',
-      'occult-diagram-field': 'Correspondence rings and sigil pivot geometry.',
-      'graphic-novel-field': 'Vintage experimental panel pacing and gutter breaks.',
-      'print-material-field': 'Riso/gelli/screen flat ink with overprint chatter.',
-      'hand-drawn-field': 'Visible hand pressure drift and retraced contour wobble.',
+      'ink-spray-field': 'Aerosolized mist, turbulent edges, and splatter recoil from hard stops.',
+      'meat-brush-field': 'Smear, scrape, and re-wet passes that drag pigment into stressed anatomy.',
+      'collage-break-field': 'Grafted paper shards, abrupt seams, and overpainted joins.',
+      'network-map-field': 'Evidence arcs, node clusters, crossing connectors, and annotated vectors.',
+      'occult-diagram-field': 'Correspondence rings, sigil-like pivots, and ritual axis alignments.',
+      'graphic-novel-field': 'Vintage experimental panel pacing with broken gutters and caption voids.',
+      'print-material-field': 'Riso/gelli/screen behavior: flat inks, overprint chatter, press pressure memory.',
+      'hand-drawn-field': 'Visible hand pressure drift, hesitant corrections, and re-traced contours.',
     },
   },
   PALETTE: {
@@ -244,7 +149,7 @@ export const defaultSchemaV2: SchemaV2 = {
         { name: 'FLUORO PINK', hex: '#ff477e', role: 'accent', opacity: 0.75 },
       ],
       misregistration_px: 1,
-      overprint_logic: 'Visible overlap and slight misregistration.',
+      overprint_logic: 'Stack overlays to create secondary tones with visible plate disagreement.',
     },
     descriptive: { text: '', keywords: [] },
     image_extract: { enabled: false, source_image_id: '', method: 'kmeans', k: 5, palette: [], lock_palette: false },
@@ -252,7 +157,6 @@ export const defaultSchemaV2: SchemaV2 = {
   },
   CONSTRAINTS: { forbid: [], require: [] },
   ANIMATION: { enabled: false, fps: 12, duration_s: 2, export_mode: 'BOTH', every_n: 1, keyframes: [] },
-
   MODULES: {
     INPUT: true,
     STATE_MAP: true,
@@ -266,23 +170,34 @@ export const defaultSchemaV2: SchemaV2 = {
     ANIMATION: false,
   },
   IGNORE_RULES: { hard_disable: true, preserve_state: true },
+
+  mode: 'FULL',
+  subject: '',
+  notes: '',
+  styleTokens: [],
+  seed: 'oracle-v2-seed',
+  batchPrefix: 'run',
+  hallucination: 72,
+  startH: 45,
+  endH: 88,
+  curve: 's-curve',
+  mutateStrength: 55,
+  humanizerLevel: 56,
+  humanizerMin: 35,
+  humanizerMax: 84,
+  triptychPanel1State: 'ANCHOR',
+  evolvePathPreset: 'drift',
+  animation: { enabled: false, frames: 24, curve: 's-curve', timeline: [], keyframes: [] },
 };
 
-export const mergeSchemaV2 = <T>(base: T, patch: DeepPartial<T>): T => {
-  const output = { ...(base as Record<string, unknown>) };
-  Object.entries(patch as Record<string, unknown>).forEach(([key, value]) => {
-    if (
-      value &&
-      typeof value === 'object' &&
-      !Array.isArray(value) &&
-      output[key] &&
-      typeof output[key] === 'object' &&
-      !Array.isArray(output[key])
-    ) {
-      output[key] = mergeSchemaV2(output[key], value as DeepPartial<typeof output[key]>);
+export const mergeSchemaV2 = (base: SchemaV2, patch: DeepPartial<SchemaV2>): SchemaV2 => {
+  const output: Record<string, unknown> = { ...base };
+  Object.entries(patch).forEach(([key, value]) => {
+    if (value && typeof value === 'object' && !Array.isArray(value) && typeof output[key] === 'object' && output[key] !== null && !Array.isArray(output[key])) {
+      output[key] = mergeSchemaV2(output[key] as SchemaV2, value as DeepPartial<SchemaV2>);
     } else if (value !== undefined) {
       output[key] = value;
     }
   });
-  return output as T;
+  return output as SchemaV2;
 };

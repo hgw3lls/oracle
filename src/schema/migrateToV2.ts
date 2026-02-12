@@ -1,169 +1,142 @@
-import { defaultSchemaV2, mergeSchemaV2, type SchemaV2, type AnimationTimelinePoint } from './hypnagnosisSchemaV2';
+import { defaultSchemaV2, mergeSchemaV2, type SchemaV2 } from './hypnagnosisSchemaV2';
 
-type UnknownRecord = Record<string, unknown>;
+type R = Record<string, unknown>;
+const asObj = (v: unknown): R => (typeof v === 'object' && v !== null ? v as R : {});
+const asStr = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
+const asNum = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+const asBool = (v: unknown, d = false) => (typeof v === 'boolean' ? v : d);
+const asStrArray = (v: unknown, d: string[] = []) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : d);
 
-const asObject = (value: unknown): UnknownRecord => (typeof value === 'object' && value !== null ? value as UnknownRecord : {});
-const asString = (value: unknown, fallback: string) => (typeof value === 'string' ? value : fallback);
-const asBoolean = (value: unknown, fallback: boolean) => (typeof value === 'boolean' ? value : fallback);
-const asNumber = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
-const asStringArray = (value: unknown, fallback: string[]) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback);
-const clamp100 = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
-
-const asModuleToggleMap = (value: unknown): SchemaV2['MODULES'] => {
-  const modules = asObject(value);
-  return {
-    INPUT: asBoolean(modules.INPUT, defaultSchemaV2.MODULES.INPUT),
-    STATE_MAP: asBoolean(modules.STATE_MAP, defaultSchemaV2.MODULES.STATE_MAP),
-    HALLUCINATION: asBoolean(modules.HALLUCINATION, defaultSchemaV2.MODULES.HALLUCINATION),
-    HYPNA_MATRIX: asBoolean(modules.HYPNA_MATRIX, defaultSchemaV2.MODULES.HYPNA_MATRIX),
-    PROMPT_GENOME: asBoolean(modules.PROMPT_GENOME, defaultSchemaV2.MODULES.PROMPT_GENOME),
-    VISUAL_GRAMMAR: asBoolean(modules.VISUAL_GRAMMAR, defaultSchemaV2.MODULES.VISUAL_GRAMMAR),
-    INFLUENCE_ENGINE: asBoolean(modules.INFLUENCE_ENGINE, defaultSchemaV2.MODULES.INFLUENCE_ENGINE),
-    PALETTE: asBoolean(modules.PALETTE, defaultSchemaV2.MODULES.PALETTE),
-    CONSTRAINTS: asBoolean(modules.CONSTRAINTS, defaultSchemaV2.MODULES.CONSTRAINTS),
-    ANIMATION: asBoolean(modules.ANIMATION, defaultSchemaV2.MODULES.ANIMATION),
-  };
-};
-
-const asIgnoreRules = (value: unknown): SchemaV2['IGNORE_RULES'] => {
-  const rules = asObject(value);
-  return {
-    hard_disable: asBoolean(rules.hard_disable, true),
-    preserve_state: asBoolean(rules.preserve_state, true),
-  };
-};
-
-const asKeyframes = (value: unknown): SchemaV2['animation']['keyframes'] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => asObject(item))
-    .map((item) => ({
-      t: asNumber(item.t, 0),
-      state: typeof item.state === 'string' ? item.state : undefined,
-      curves: asObject(item.curves) as Record<string, number | string>,
-    }))
-    .filter((item) => item.t >= 0 && item.t <= 1);
-};
-const asTimeline = (value: unknown): AnimationTimelinePoint[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => asObject(item))
-    .map((item) => ({
-      at: asNumber(item.at, 0),
-      overrides: asObject(item.overrides) as Partial<SchemaV2>,
-    }))
-    .filter((item) => item.at >= 0 && item.at <= 1);
-};
+const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
 export const migrateToV2 = (input: unknown): SchemaV2 => {
-  const source = asObject(input);
-  const autoEvolve = asObject(source.autoEvolve);
-  const humanizerRange = asObject(source.humanizerRange);
-  const humanizer = asObject(source.humanizer);
-  const triptych = asObject(source.triptych);
-  const constraints = asObject(source.constraints ?? source.CONSTRAINTS);
-  const animation = asObject(source.animation ?? source.ANIMATION);
-  const modules = source.MODULES ?? source.modules;
-  const ignoreRules = source.IGNORE_RULES ?? source.ignore_rules;
-  const inputBlock = asObject(source.INPUT);
-  const stateMap = asObject(source['STATE-MAP']);
-  const hall = asObject(source.HALLUCINATION);
+  if (!input) return defaultSchemaV2;
+  const src = asObj(input);
 
-  const panels = Array.isArray(triptych.panels) ? triptych.panels.map(asObject) : [];
-  const panel1 = panels[0] || {};
-  const panel2 = panels[1] || {};
-  const panel3 = panels[2] || {};
+  const inputBlock = asObj(src.INPUT);
+  const stateMap = asObj(src['STATE-MAP']);
+  const hall = asObj(src.HALLUCINATION);
+  const matrix = asObj(src['HYPNA-MATRIX']);
+  const promptGenome = asObj(src['PROMPT-GENOME']);
+  const pgStructure = asObj(promptGenome.structure);
+  const pgPerception = asObj(promptGenome.perception);
+  const visualGrammar = asObj(src['VISUAL-GRAMMAR']);
+  const fieldStructure = asObj(visualGrammar['field-structure']);
+  const diagramBehavior = asObj(visualGrammar['diagram-behavior']);
+  const influence = asObj(src['INFLUENCE-ENGINE']);
+  const palette = asObj(src.PALETTE);
+  const constraints = asObj(src.CONSTRAINTS ?? src.constraints);
+  const animation = asObj(src.ANIMATION ?? src.animation);
 
-  const base = mergeSchemaV2(defaultSchemaV2, {
-    ...source,
+  const mode = asStr(src.mode ?? inputBlock.mode, defaultSchemaV2.mode) as SchemaV2['mode'];
+  const subject = asStr(src.subject ?? inputBlock.subject, defaultSchemaV2.subject);
+  const notes = asStr(src.notes ?? inputBlock.notes, defaultSchemaV2.notes);
+  const seed = asStr(src.seed ?? inputBlock.seed, defaultSchemaV2.seed);
+  const styleTokens = asStrArray(src.styleTokens ?? inputBlock.styleTokens, defaultSchemaV2.styleTokens);
+  const batch = asStr(src.batchPrefix ?? inputBlock['batch-id'], defaultSchemaV2.batchPrefix);
+  const stateName = asStr(src.triptychPanel1State ?? stateMap['state-name'], defaultSchemaV2.triptychPanel1State);
+  const flow = asStr(src.evolvePathPreset ?? stateMap.flow, defaultSchemaV2.evolvePathPreset);
+  const hallucination = clamp(asNum(src.hallucination ?? hall.level, defaultSchemaV2.hallucination));
+
+  const next = mergeSchemaV2(defaultSchemaV2, {
     schemaVersion: 2,
-    mode: asString(source.mode ?? inputBlock.mode, defaultSchemaV2.mode) as SchemaV2['mode'],
-    subject: asString(source.subject ?? inputBlock.subject, defaultSchemaV2.subject),
-    notes: asString(source.notes ?? inputBlock.notes, defaultSchemaV2.notes),
-    styleTokens: asStringArray(source.styleTokens ?? inputBlock.styleTokens, defaultSchemaV2.styleTokens),
-    hallucination: clamp100(asNumber(source.hallucination ?? hall.level, defaultSchemaV2.hallucination)),
-    evolveEnabled: asBoolean(source.evolveEnabled ?? autoEvolve.enabled, defaultSchemaV2.evolveEnabled),
-    evolveSteps: asNumber(source.evolveSteps ?? autoEvolve.steps, defaultSchemaV2.evolveSteps),
-    evolvePathPreset: asString(source.evolvePathPreset ?? source.flow ?? stateMap.flow, defaultSchemaV2.evolvePathPreset),
-    startH: asNumber(source.startH ?? source.startHallucination ?? source['start-h'], defaultSchemaV2.startH),
-    endH: asNumber(source.endH ?? source.endHallucination ?? source['end-h'], defaultSchemaV2.endH),
-    curve: asString(source.curve ?? autoEvolve.curve, defaultSchemaV2.curve) as SchemaV2['curve'],
-    mutateEnabled: asBoolean(source.mutateEnabled, defaultSchemaV2.mutateEnabled),
-    mutateStrength: asNumber(source.mutateStrength ?? source['mutation-strength'], defaultSchemaV2.mutateStrength),
-    mutateScope: asString(source.mutateScope, defaultSchemaV2.mutateScope),
-    mutateMode: asString(source.mutateMode, defaultSchemaV2.mutateMode),
-    mutateAnchor: asString(source.mutateAnchor, defaultSchemaV2.mutateAnchor),
-    lockCore: asBoolean(source.lockCore, defaultSchemaV2.lockCore),
-    lockTexture: asBoolean(source.lockTexture, defaultSchemaV2.lockTexture),
-    lockPalette: asBoolean(source.lockPalette, defaultSchemaV2.lockPalette),
-    lockGesture: asBoolean(source.lockGesture, defaultSchemaV2.lockGesture),
-    seed: asString(source.seed ?? inputBlock.seed, defaultSchemaV2.seed),
-    batchCount: asNumber(source.batchCount, defaultSchemaV2.batchCount),
-    batchPrefix: asString(source.batchPrefix ?? inputBlock['batch-id'], defaultSchemaV2.batchPrefix),
-    triptychAuto: asBoolean(source.triptychAuto, defaultSchemaV2.triptychAuto),
-    triptychPanel1Name: asString(source.triptychPanel1Name ?? panel1.panelName, defaultSchemaV2.triptychPanel1Name),
-    triptychPanel1State: asString(source.triptychPanel1State ?? panel1.stateName ?? stateMap['state-name'], defaultSchemaV2.triptychPanel1State),
-    triptychPanel1Path: asString(source.triptychPanel1Path ?? panel1.pathPreset, defaultSchemaV2.triptychPanel1Path),
-    triptychPanel1Steps: asNumber(source.triptychPanel1Steps ?? panel1.steps, defaultSchemaV2.triptychPanel1Steps),
-    triptychPanel2Name: asString(source.triptychPanel2Name ?? panel2.panelName, defaultSchemaV2.triptychPanel2Name),
-    triptychPanel2State: asString(source.triptychPanel2State ?? panel2.stateName, defaultSchemaV2.triptychPanel2State),
-    triptychPanel2Path: asString(source.triptychPanel2Path ?? panel2.pathPreset, defaultSchemaV2.triptychPanel2Path),
-    triptychPanel2Steps: asNumber(source.triptychPanel2Steps ?? panel2.steps, defaultSchemaV2.triptychPanel2Steps),
-    triptychPanel3Name: asString(source.triptychPanel3Name ?? panel3.panelName, defaultSchemaV2.triptychPanel3Name),
-    triptychPanel3State: asString(source.triptychPanel3State ?? panel3.stateName, defaultSchemaV2.triptychPanel3State),
-    triptychPanel3Path: asString(source.triptychPanel3Path ?? panel3.pathPreset, defaultSchemaV2.triptychPanel3Path),
-    triptychPanel3Steps: asNumber(source.triptychPanel3Steps ?? panel3.steps, defaultSchemaV2.triptychPanel3Steps),
-    humanizerLevel: asNumber(source.humanizerLevel ?? humanizer['level(0-100)'], defaultSchemaV2.humanizerLevel),
-    autoCopyCompiledPrompt: asBoolean(source.autoCopyCompiledPrompt, defaultSchemaV2.autoCopyCompiledPrompt),
-    humanizerMin: asNumber(source.humanizerMin ?? humanizerRange.min, defaultSchemaV2.humanizerMin),
-    humanizerMax: asNumber(source.humanizerMax ?? humanizerRange.max, defaultSchemaV2.humanizerMax),
-    humanizerQualities: {
-      ...defaultSchemaV2.humanizerQualities,
-      ...asObject(source.humanizerQualities),
+    mode,
+    subject,
+    notes,
+    seed,
+    styleTokens,
+    batchPrefix: batch,
+    triptychPanel1State: stateName,
+    evolvePathPreset: flow,
+    hallucination,
+    startH: asNum(src.startH, defaultSchemaV2.startH),
+    endH: asNum(src.endH, defaultSchemaV2.endH),
+    mutateStrength: clamp(asNum(src.mutateStrength, defaultSchemaV2.mutateStrength)),
+    humanizerLevel: clamp(asNum(src.humanizerLevel, defaultSchemaV2.humanizerLevel)),
+    humanizerMin: clamp(asNum(src.humanizerMin, defaultSchemaV2.humanizerMin)),
+    humanizerMax: clamp(asNum(src.humanizerMax, defaultSchemaV2.humanizerMax)),
+    MODULES: {
+      ...defaultSchemaV2.MODULES,
+      ...asObj(src.MODULES),
+    } as SchemaV2['MODULES'],
+    IGNORE_RULES: {
+      hard_disable: true,
+      preserve_state: true,
     },
-    MODULES: asModuleToggleMap(modules),
-    IGNORE_RULES: asIgnoreRules(ignoreRules),
-    constraints: {
-      forbid: asStringArray(constraints.forbid, defaultSchemaV2.constraints.forbid),
-      require: asStringArray(constraints.require, defaultSchemaV2.constraints.require),
-    },
-    animation: {
-      enabled: asBoolean(animation.enabled, defaultSchemaV2.animation.enabled),
-      frames: asNumber(animation.frames, defaultSchemaV2.animation.frames),
-      curve: asString(animation.curve, defaultSchemaV2.animation.curve) as SchemaV2['animation']['curve'],
-      timeline: asTimeline(animation.timeline),
-      keyframes: asKeyframes(animation.keyframes),
-    },
-  });
-
-  return {
-    ...base,
     INPUT: {
-      ...base.INPUT,
-      mode: base.mode,
-      'batch-id': base.batchPrefix,
-      seed: base.seed,
-      notes: base.notes,
-      subject: base.subject,
-      styleTokens: base.styleTokens,
+      mode,
+      subject,
+      notes,
+      seed,
+      styleTokens,
+      'batch-id': batch,
     },
     'STATE-MAP': {
-      ...base['STATE-MAP'],
-      'state-name': base.triptychPanel1State,
-      flow: base.evolvePathPreset,
+      'state-name': stateName,
+      flow,
     },
     HALLUCINATION: {
-      ...base.HALLUCINATION,
-      level: clamp100(base.hallucination),
+      level: hallucination,
     },
+    'HYPNA-MATRIX': {
+      temporal: clamp(asNum((src as R).temporal ?? matrix.temporal, defaultSchemaV2['HYPNA-MATRIX'].temporal)),
+      material: clamp(asNum((src as R).material ?? matrix.material, defaultSchemaV2['HYPNA-MATRIX'].material)),
+      space: clamp(asNum((src as R).space ?? matrix.space, defaultSchemaV2['HYPNA-MATRIX'].space)),
+      symbol: clamp(asNum((src as R).symbol ?? matrix.symbol, defaultSchemaV2['HYPNA-MATRIX'].symbol)),
+      agency: clamp(asNum((src as R).agency ?? matrix.agency, defaultSchemaV2['HYPNA-MATRIX'].agency)),
+    },
+    'PROMPT-GENOME': {
+      structure: {
+        composition: asStr(pgStructure.composition, defaultSchemaV2['PROMPT-GENOME'].structure.composition),
+        tension: clamp(asNum(pgStructure.tension, defaultSchemaV2['PROMPT-GENOME'].structure.tension)),
+        recursion: clamp(asNum(pgStructure.recursion, defaultSchemaV2['PROMPT-GENOME'].structure.recursion)),
+      },
+      perception: {
+        grain: clamp(asNum(pgPerception.grain ?? (src as R).grain, defaultSchemaV2['PROMPT-GENOME'].perception.grain)),
+        'line-wobble': clamp(asNum(pgPerception['line-wobble'] ?? (src as R).lineWobble, defaultSchemaV2['PROMPT-GENOME'].perception['line-wobble'])),
+        erasure: clamp(asNum(pgPerception.erasure, defaultSchemaV2['PROMPT-GENOME'].perception.erasure)),
+        annotation: clamp(asNum(pgPerception.annotation, defaultSchemaV2['PROMPT-GENOME'].perception.annotation)),
+      },
+    },
+    'VISUAL-GRAMMAR': {
+      'field-structure': {
+        density: clamp(asNum(fieldStructure.density, defaultSchemaV2['VISUAL-GRAMMAR']['field-structure'].density)),
+        segmentation: clamp(asNum(fieldStructure.segmentation, defaultSchemaV2['VISUAL-GRAMMAR']['field-structure'].segmentation)),
+        rhythm: asStr(fieldStructure.rhythm, defaultSchemaV2['VISUAL-GRAMMAR']['field-structure'].rhythm),
+      },
+      'diagram-behavior': {
+        node_bias: clamp(asNum(diagramBehavior.node_bias, defaultSchemaV2['VISUAL-GRAMMAR']['diagram-behavior'].node_bias)),
+        arc_noise: clamp(asNum(diagramBehavior.arc_noise, defaultSchemaV2['VISUAL-GRAMMAR']['diagram-behavior'].arc_noise)),
+        correspondence_lock: asBool(diagramBehavior.correspondence_lock, defaultSchemaV2['VISUAL-GRAMMAR']['diagram-behavior'].correspondence_lock),
+      },
+    },
+    'INFLUENCE-ENGINE': {
+      ...defaultSchemaV2['INFLUENCE-ENGINE'],
+      ...influence,
+    } as SchemaV2['INFLUENCE-ENGINE'],
+    PALETTE: {
+      ...defaultSchemaV2.PALETTE,
+      ...palette,
+      descriptive: {
+        ...defaultSchemaV2.PALETTE.descriptive,
+        ...asObj(palette.descriptive),
+        keywords: asStrArray(asObj(palette.descriptive).keywords, defaultSchemaV2.PALETTE.descriptive.keywords),
+      },
+    } as SchemaV2['PALETTE'],
     CONSTRAINTS: {
-      forbid: [...base.constraints.forbid],
-      require: [...base.constraints.require],
+      forbid: asStrArray(constraints.forbid, defaultSchemaV2.CONSTRAINTS.forbid),
+      require: asStrArray(constraints.require, defaultSchemaV2.CONSTRAINTS.require),
     },
     ANIMATION: {
-      ...base.ANIMATION,
-      enabled: base.animation.enabled,
-      keyframes: base.animation.keyframes,
+      ...defaultSchemaV2.ANIMATION,
+      ...animation,
+      keyframes: Array.isArray(animation.keyframes) ? animation.keyframes as SchemaV2['ANIMATION']['keyframes'] : defaultSchemaV2.ANIMATION.keyframes,
     },
-  };
+    animation: {
+      ...defaultSchemaV2.animation,
+      ...asObj(src.animation),
+    } as SchemaV2['animation'],
+  });
+
+  return next;
 };
