@@ -24,6 +24,16 @@ export type InfluenceWeightKey =
 export type InfluenceWeights = Record<InfluenceWeightKey, number>;
 export type MaterialBehaviors = Record<InfluenceWeightKey, string>;
 
+export type InfluenceWeightKey =
+  | 'ink-spray-field'
+  | 'meat-brush-field'
+  | 'collage-break-field'
+  | 'network-map-field'
+  | 'occult-diagram-field'
+  | 'graphic-novel-field'
+  | 'print-material-field'
+  | 'hand-drawn-field';
+
 export type ModuleToggleMap = {
   INPUT: boolean;
   STATE_MAP: boolean;
