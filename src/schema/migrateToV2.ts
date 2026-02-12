@@ -1,4 +1,4 @@
-import { defaultSchemaV2, type SchemaV2, type AnimationTimelinePoint } from './hypnagnosisSchemaV2';
+import { defaultSchemaV2, mergeSchemaV2, type SchemaV2, type AnimationTimelinePoint } from './hypnagnosisSchemaV2';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -7,7 +7,7 @@ const asString = (value: unknown, fallback: string) => (typeof value === 'string
 const asBoolean = (value: unknown, fallback: boolean) => (typeof value === 'boolean' ? value : fallback);
 const asNumber = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
 const asStringArray = (value: unknown, fallback: string[]) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback);
-
+const clamp100 = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 
 const asModuleToggleMap = (value: unknown): SchemaV2['MODULES'] => {
   const modules = asObject(value);
@@ -28,8 +28,8 @@ const asModuleToggleMap = (value: unknown): SchemaV2['MODULES'] => {
 const asIgnoreRules = (value: unknown): SchemaV2['IGNORE_RULES'] => {
   const rules = asObject(value);
   return {
-    hard_disable: asBoolean(rules.hard_disable, defaultSchemaV2.IGNORE_RULES.hard_disable),
-    preserve_state: asBoolean(rules.preserve_state, defaultSchemaV2.IGNORE_RULES.preserve_state),
+    hard_disable: asBoolean(rules.hard_disable, true),
+    preserve_state: asBoolean(rules.preserve_state, true),
   };
 };
 
@@ -65,24 +65,26 @@ export const migrateToV2 = (input: unknown): SchemaV2 => {
   const animation = asObject(source.animation ?? source.ANIMATION);
   const modules = source.MODULES ?? source.modules;
   const ignoreRules = source.IGNORE_RULES ?? source.ignore_rules;
-  const panels = Array.isArray(triptych.panels) ? triptych.panels.map(asObject) : [];
+  const inputBlock = asObject(source.INPUT);
+  const stateMap = asObject(source['STATE-MAP']);
+  const hall = asObject(source.HALLUCINATION);
 
+  const panels = Array.isArray(triptych.panels) ? triptych.panels.map(asObject) : [];
   const panel1 = panels[0] || {};
   const panel2 = panels[1] || {};
   const panel3 = panels[2] || {};
 
-  return {
-    ...defaultSchemaV2,
+  const base = mergeSchemaV2(defaultSchemaV2, {
     ...source,
     schemaVersion: 2,
-    mode: asString(source.mode, defaultSchemaV2.mode) as SchemaV2['mode'],
-    subject: asString(source.subject, defaultSchemaV2.subject),
-    notes: asString(source.notes, defaultSchemaV2.notes),
-    styleTokens: asStringArray(source.styleTokens, defaultSchemaV2.styleTokens),
-    hallucination: asNumber(source.hallucination, defaultSchemaV2.hallucination),
+    mode: asString(source.mode ?? inputBlock.mode, defaultSchemaV2.mode) as SchemaV2['mode'],
+    subject: asString(source.subject ?? inputBlock.subject, defaultSchemaV2.subject),
+    notes: asString(source.notes ?? inputBlock.notes, defaultSchemaV2.notes),
+    styleTokens: asStringArray(source.styleTokens ?? inputBlock.styleTokens, defaultSchemaV2.styleTokens),
+    hallucination: clamp100(asNumber(source.hallucination ?? hall.level, defaultSchemaV2.hallucination)),
     evolveEnabled: asBoolean(source.evolveEnabled ?? autoEvolve.enabled, defaultSchemaV2.evolveEnabled),
     evolveSteps: asNumber(source.evolveSteps ?? autoEvolve.steps, defaultSchemaV2.evolveSteps),
-    evolvePathPreset: asString(source.evolvePathPreset ?? source.flow, defaultSchemaV2.evolvePathPreset),
+    evolvePathPreset: asString(source.evolvePathPreset ?? source.flow ?? stateMap.flow, defaultSchemaV2.evolvePathPreset),
     startH: asNumber(source.startH ?? source.startHallucination ?? source['start-h'], defaultSchemaV2.startH),
     endH: asNumber(source.endH ?? source.endHallucination ?? source['end-h'], defaultSchemaV2.endH),
     curve: asString(source.curve ?? autoEvolve.curve, defaultSchemaV2.curve) as SchemaV2['curve'],
@@ -95,12 +97,12 @@ export const migrateToV2 = (input: unknown): SchemaV2 => {
     lockTexture: asBoolean(source.lockTexture, defaultSchemaV2.lockTexture),
     lockPalette: asBoolean(source.lockPalette, defaultSchemaV2.lockPalette),
     lockGesture: asBoolean(source.lockGesture, defaultSchemaV2.lockGesture),
-    seed: asString(source.seed, defaultSchemaV2.seed),
+    seed: asString(source.seed ?? inputBlock.seed, defaultSchemaV2.seed),
     batchCount: asNumber(source.batchCount, defaultSchemaV2.batchCount),
-    batchPrefix: asString(source.batchPrefix, defaultSchemaV2.batchPrefix),
+    batchPrefix: asString(source.batchPrefix ?? inputBlock['batch-id'], defaultSchemaV2.batchPrefix),
     triptychAuto: asBoolean(source.triptychAuto, defaultSchemaV2.triptychAuto),
     triptychPanel1Name: asString(source.triptychPanel1Name ?? panel1.panelName, defaultSchemaV2.triptychPanel1Name),
-    triptychPanel1State: asString(source.triptychPanel1State ?? panel1.stateName, defaultSchemaV2.triptychPanel1State),
+    triptychPanel1State: asString(source.triptychPanel1State ?? panel1.stateName ?? stateMap['state-name'], defaultSchemaV2.triptychPanel1State),
     triptychPanel1Path: asString(source.triptychPanel1Path ?? panel1.pathPreset, defaultSchemaV2.triptychPanel1Path),
     triptychPanel1Steps: asNumber(source.triptychPanel1Steps ?? panel1.steps, defaultSchemaV2.triptychPanel1Steps),
     triptychPanel2Name: asString(source.triptychPanel2Name ?? panel2.panelName, defaultSchemaV2.triptychPanel2Name),
@@ -131,6 +133,37 @@ export const migrateToV2 = (input: unknown): SchemaV2 => {
       curve: asString(animation.curve, defaultSchemaV2.animation.curve) as SchemaV2['animation']['curve'],
       timeline: asTimeline(animation.timeline),
       keyframes: asKeyframes(animation.keyframes),
+    },
+  });
+
+  return {
+    ...base,
+    INPUT: {
+      ...base.INPUT,
+      mode: base.mode,
+      'batch-id': base.batchPrefix,
+      seed: base.seed,
+      notes: base.notes,
+      subject: base.subject,
+      styleTokens: base.styleTokens,
+    },
+    'STATE-MAP': {
+      ...base['STATE-MAP'],
+      'state-name': base.triptychPanel1State,
+      flow: base.evolvePathPreset,
+    },
+    HALLUCINATION: {
+      ...base.HALLUCINATION,
+      level: clamp100(base.hallucination),
+    },
+    CONSTRAINTS: {
+      forbid: [...base.constraints.forbid],
+      require: [...base.constraints.require],
+    },
+    ANIMATION: {
+      ...base.ANIMATION,
+      enabled: base.animation.enabled,
+      keyframes: base.animation.keyframes,
     },
   };
 };
