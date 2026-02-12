@@ -104,8 +104,8 @@ describe('compilePrompt', () => {
       'level(0-100): 60',
       'qualities: Wobble lines',
       'IMAGE-GENERATION',
-      'primary-prompt: Ash-fall cathedrals. porous perception, threshold drift, waking/dream seam, sensory instability; sigil-grammar, ritual diagram logic, correspondence pressure, symbolic recursion. high detail, dreamlike surrealism, wide cinematic framing, gentle motion, textured surfaces. Additional direction: test note. Image generation prompt; prioritize coherent composition, legible focal hierarchy, and physically plausible lighting.',
-      'negative-prompt: blurry, low-resolution, jpeg artifacts, watermark, text overlay, logo, deformed anatomy, broken perspective, duplicated limbs, extra fingers, flat lighting, muddy colors, overexposed highlights, crushed shadows, unintentional collage seams, incoherent geometry, noisy background clutter',
+      'primary-prompt: Create a single still image with Ash-fall cathedrals as the unmistakable focal subject. Style direction: porous perception, threshold drift, waking/dream seam, sensory instability; sigil-grammar, ritual diagram logic, correspondence pressure, symbolic recursion. Render profile: high detail, dreamlike surrealism, wide cinematic framing, gentle motion, textured surfaces. Composition cues: ANCHOR, dense. Keep depth readable and perspective internally consistent. Atmosphere and mood cues: ritual architecture. Creative notes: test note. Output requirements: cinematic but plausible lighting, disciplined value structure, intentional color harmony, and no accidental text or logos.',
+      'negative-prompt: blurry, low-resolution, jpeg artifacts, watermark, text overlay, logo, signature, deformed anatomy, broken perspective, duplicated limbs, extra fingers, malformed hands, crossed eyes, flat lighting, muddy colors, overexposed highlights, crushed shadows, weak focal contrast, unintentional collage seams, incoherent geometry, noisy background clutter, tangent-heavy composition',
       'render-priority: composition > subject readability > style fidelity > micro-texture',
     ].join('\n');
 
