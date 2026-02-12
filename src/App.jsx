@@ -46,6 +46,12 @@ const snapshotToState = (snapshot, idx, panelName, stateName) => ({
   prompt: snapshot.compiledPrompt,
 });
 
+const safeRounded = (value, fallback) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.round(numeric);
+};
+
 const EXAMPLE_HH = `HANDRAW-HUMAN
 subject: Ash-fall cathedrals
 HYPNA-MATRIX
@@ -178,43 +184,45 @@ export default function App() {
   const baseState = series[Math.min(activeState, series.length - 1)] ?? series[0] ?? null;
   const activeAnimationFrame = animationFrames[Math.max(0, Math.min(animationFrames.length - 1, animationConfig.index))] || null;
   const chainSelectedNode = chainResult?.nodes?.find((node) => node.id === selectedChainNodeId) || null;
+  const chainNodeState = chainSelectedNode?.state || {};
   const chainDerivedState = chainSelectedNode ? {
     ...baseState,
     stateName: chainSelectedNode.id,
     flow: 'multi-agent-chain',
     seed: form.seed,
-    hallucination: Math.round(chainSelectedNode.state.hallucination),
-    temporal: Math.round(chainSelectedNode.state.temporal),
-    material: Math.round(chainSelectedNode.state.material),
-    space: Math.round(chainSelectedNode.state.space),
-    symbol: Math.round(chainSelectedNode.state.symbol),
-    agency: Math.round(chainSelectedNode.state.agency),
-    grain: Math.round(chainSelectedNode.state.grain),
-    lineWobble: Math.round(chainSelectedNode.state['line-wobble']),
-    erasure: Math.round(chainSelectedNode.state.erasure),
-    annotation: Math.round(chainSelectedNode.state.annotation),
-    paletteValue: Math.round(chainSelectedNode.state.palette),
-    gestureValue: Math.round(chainSelectedNode.state.gesture),
+    hallucination: safeRounded(chainNodeState.hallucination, safeRounded(baseState?.hallucination, 50)),
+    temporal: safeRounded(chainNodeState.temporal, safeRounded(baseState?.temporal, 55)),
+    material: safeRounded(chainNodeState.material, safeRounded(baseState?.material, 55)),
+    space: safeRounded(chainNodeState.space, safeRounded(baseState?.space, 55)),
+    symbol: safeRounded(chainNodeState.symbol, safeRounded(baseState?.symbol, 55)),
+    agency: safeRounded(chainNodeState.agency, safeRounded(baseState?.agency, 55)),
+    grain: safeRounded(chainNodeState.grain, safeRounded(baseState?.grain, 40)),
+    lineWobble: safeRounded(chainNodeState['line-wobble'], safeRounded(baseState?.lineWobble, 40)),
+    erasure: safeRounded(chainNodeState.erasure, safeRounded(baseState?.erasure, 32)),
+    annotation: safeRounded(chainNodeState.annotation, safeRounded(baseState?.annotation, 42)),
+    paletteValue: safeRounded(chainNodeState.palette, safeRounded(baseState?.paletteValue, 50)),
+    gestureValue: safeRounded(chainNodeState.gesture, safeRounded(baseState?.gestureValue, 48)),
     prompt: chainSelectedNode.compiledPrompt,
     diffSummary: `chain score ${chainSelectedNode.score.toFixed(3)}`,
   } : null;
+  const frameState = activeAnimationFrame?.state || {};
   const frameDerivedState = activeAnimationFrame ? {
     ...baseState,
     stateName: `FRAME-${activeAnimationFrame.index + 1}`,
     flow: 'animation-frame',
     seed: activeAnimationFrame.seed,
-    hallucination: Math.round(activeAnimationFrame.state.hallucination),
-    temporal: Math.round(activeAnimationFrame.state.temporal),
-    material: Math.round(activeAnimationFrame.state.material),
-    space: Math.round(activeAnimationFrame.state.space),
-    symbol: Math.round(activeAnimationFrame.state.symbol),
-    agency: Math.round(activeAnimationFrame.state.agency),
-    grain: Math.round(activeAnimationFrame.state.grain),
-    lineWobble: Math.round(activeAnimationFrame.state['line-wobble']),
-    erasure: Math.round(activeAnimationFrame.state.erasure),
-    annotation: Math.round(activeAnimationFrame.state.annotation),
-    paletteValue: Math.round(activeAnimationFrame.state.palette),
-    gestureValue: Math.round(activeAnimationFrame.state.gesture),
+    hallucination: safeRounded(frameState.hallucination, safeRounded(baseState?.hallucination, 50)),
+    temporal: safeRounded(frameState.temporal, safeRounded(baseState?.temporal, 55)),
+    material: safeRounded(frameState.material, safeRounded(baseState?.material, 55)),
+    space: safeRounded(frameState.space, safeRounded(baseState?.space, 55)),
+    symbol: safeRounded(frameState.symbol, safeRounded(baseState?.symbol, 55)),
+    agency: safeRounded(frameState.agency, safeRounded(baseState?.agency, 55)),
+    grain: safeRounded(frameState.grain, safeRounded(baseState?.grain, 40)),
+    lineWobble: safeRounded(frameState['line-wobble'], safeRounded(baseState?.lineWobble, 40)),
+    erasure: safeRounded(frameState.erasure, safeRounded(baseState?.erasure, 32)),
+    annotation: safeRounded(frameState.annotation, safeRounded(baseState?.annotation, 42)),
+    paletteValue: safeRounded(frameState.palette, safeRounded(baseState?.paletteValue, 50)),
+    gestureValue: safeRounded(frameState.gesture, safeRounded(baseState?.gestureValue, 48)),
     prompt: activeAnimationFrame.compiledPrompt,
     diffSummary: activeAnimationFrame.meta?.diffSummary || 'frame snapshot',
   } : null;
