@@ -16,6 +16,14 @@ export type FrameTimeline = {
 
 export type PromptCompilerV2 = (schema: SchemaV2, frameOverrides?: Partial<SchemaV2>) => { compiledPrompt: string };
 
+export type ExportSchemaOptions = {
+  enabledOnly?: boolean;
+};
+
+export type ExportFramePromptSheetOptions = {
+  includeDisabledNotes?: boolean;
+};
+
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -52,27 +60,59 @@ const categoricalFields = new Set<keyof SchemaV2>([
   'mutateAnchor',
 ]);
 
+const curveKeyAllowed = (curveKey: string, modules: SchemaV2['MODULES']) => {
+  const normalized = curveKey.trim().toLowerCase();
+
+  if (normalized.startsWith('influence-weights.') || normalized.startsWith('material-weights.') || normalized.startsWith('material.')) {
+    return modules.INFLUENCE_ENGINE;
+  }
+  if (normalized.startsWith('palette.')) {
+    return modules.PALETTE;
+  }
+  if (normalized.startsWith('hypna-matrix.')) {
+    return modules.HYPNA_MATRIX;
+  }
+  if (normalized.startsWith('state-map.')) {
+    return modules.STATE_MAP;
+  }
+  if (normalized.startsWith('hallucination.')) {
+    return modules.HALLUCINATION;
+  }
+
+  return true;
+};
+
+const filterKeyframesByModules = (keyframes: TimelineKeyframe[], modules: SchemaV2['MODULES']) => keyframes
+  .map((frame) => ({
+    ...frame,
+    state: modules.STATE_MAP ? frame.state : undefined,
+    curves: Object.fromEntries(Object.entries(frame.curves).filter(([curveKey]) => curveKeyAllowed(curveKey, modules))),
+  }));
+
 const getAnimationKeyframes = (schema: SchemaV2): TimelineKeyframe[] => {
   const animationAny = schema.animation as unknown as { keyframes?: TimelineKeyframe[]; timeline?: Array<{ at: number; overrides: Partial<SchemaV2> }> };
-  if (Array.isArray(animationAny.keyframes) && animationAny.keyframes.length) {
-    return animationAny.keyframes
-      .map((kf) => ({ t: clamp01(kf.t), state: kf.state, curves: kf.curves || {} }))
-      .sort((a, b) => a.t - b.t);
-  }
 
-  if (Array.isArray(animationAny.timeline) && animationAny.timeline.length) {
-    return animationAny.timeline
+  let keyframes: TimelineKeyframe[];
+
+  if (Array.isArray(animationAny.keyframes) && animationAny.keyframes.length) {
+    keyframes = animationAny.keyframes
+      .map((kf) => ({ t: clamp01(kf.t), state: kf.state, curves: { ...(kf.curves || {}) } }))
+      .sort((a, b) => a.t - b.t);
+  } else if (Array.isArray(animationAny.timeline) && animationAny.timeline.length) {
+    keyframes = animationAny.timeline
       .map((item) => ({
         t: clamp01(item.at),
-        curves: item.overrides as Record<string, number | string>,
+        curves: { ...(item.overrides as Record<string, number | string>) },
       }))
       .sort((a, b) => a.t - b.t);
+  } else {
+    keyframes = [
+      { t: 0, curves: { 'HALLUCINATION.level': schema.startH } },
+      { t: 1, curves: { 'HALLUCINATION.level': schema.endH } },
+    ];
   }
 
-  return [
-    { t: 0, curves: { 'HALLUCINATION.level': schema.startH } },
-    { t: 1, curves: { 'HALLUCINATION.level': schema.endH } },
-  ];
+  return filterKeyframesByModules(keyframes, schema.MODULES);
 };
 
 const pickClosestKeyframe = (frames: TimelineKeyframe[], t: number) => {
@@ -137,7 +177,7 @@ export const interpolateAtTime = (schemaInput: SchemaV2, t: number): Partial<Sch
   });
 
   const closest = pickClosestKeyframe(keyframes, t);
-  if (closest?.state) {
+  if (schema.MODULES.STATE_MAP && closest?.state) {
     overrides.triptychPanel1State = closest.state;
   }
 
@@ -155,6 +195,11 @@ export const buildFrameTimeline = (schemaInput: SchemaV2): FrameTimeline => {
 
 export const buildFrameSeries = (schemaInput: SchemaV2, compilerV2: PromptCompilerV2) => {
   const schema = migrateToV2(schemaInput);
+  if (!schema.MODULES.ANIMATION) {
+    console.warn('buildFrameSeries: skipped because MODULES.ANIMATION is disabled');
+    return [];
+  }
+
   const timeline = buildFrameTimeline(schema);
 
   return timeline.times.map((t, frameIndex) => {
@@ -172,6 +217,28 @@ export const buildFrameSeries = (schemaInput: SchemaV2, compilerV2: PromptCompil
   });
 };
 
+
+export const exportSchema = (schemaInput: SchemaV2, options: ExportSchemaOptions = {}) => {
+  const schema = migrateToV2(schemaInput);
+  const enabledOnly = Boolean(options.enabledOnly);
+
+  if (!enabledOnly) {
+    return JSON.stringify(schema, null, 2);
+  }
+
+  const moduleNames = Object.keys(schema.MODULES) as Array<keyof SchemaV2['MODULES']>;
+  const disabledModules = moduleNames.filter((name) => !schema.MODULES[name]);
+
+  return JSON.stringify({
+    ...schema,
+    exportMeta: {
+      mode: 'enabled-only',
+      disabledModules,
+      note: 'Disabled module blocks are retained and tagged via exportMeta.disabledModules.',
+    },
+  }, null, 2);
+};
+
 export const exportTimelineJSON = (schemaInput: SchemaV2) => {
   const schema = migrateToV2(schemaInput);
   const timeline = buildFrameTimeline(schema);
@@ -185,6 +252,24 @@ export const exportTimelineJSON = (schemaInput: SchemaV2) => {
   }, null, 2);
 };
 
-export const exportFramePromptSheet = (frames: Array<{ frameIndex: number; t: number; compiledPrompt: string }>) => frames
-  .map((frame) => `# FRAME ${frame.frameIndex + 1} (t=${frame.t.toFixed(4)})\n${frame.compiledPrompt}`)
+export const exportFramePromptSheet = (
+  frames: Array<{ frameIndex: number; t: number; compiledPrompt: string; frameState?: SchemaV2 }>,
+  options: ExportFramePromptSheetOptions = {},
+) => frames
+  .map((frame) => {
+    if (!options.includeDisabledNotes) {
+      return `# FRAME ${frame.frameIndex + 1} (t=${frame.t.toFixed(4)})\n${frame.compiledPrompt}`;
+    }
+
+    const disabledModules = frame.frameState
+      ? (Object.keys(frame.frameState.MODULES) as Array<keyof SchemaV2['MODULES']>)
+        .filter((moduleName) => !frame.frameState?.MODULES[moduleName])
+      : [];
+
+    const disabledNote = disabledModules.length
+      ? `Disabled modules: ${disabledModules.join(', ')}`
+      : 'Disabled modules: none';
+
+    return `# FRAME ${frame.frameIndex + 1} (t=${frame.t.toFixed(4)})\n${disabledNote}\n${frame.compiledPrompt}`;
+  })
   .join('\n\n---\n\n');

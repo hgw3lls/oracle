@@ -30,6 +30,24 @@ export type AnimationConfigV2 = {
   keyframes: AnimationKeyframeV2[];
 };
 
+export type ModuleToggleMap = {
+  INPUT: boolean;
+  STATE_MAP: boolean;
+  HALLUCINATION: boolean;
+  HYPNA_MATRIX: boolean;
+  PROMPT_GENOME: boolean;
+  VISUAL_GRAMMAR: boolean;
+  INFLUENCE_ENGINE: boolean;
+  PALETTE: boolean;
+  CONSTRAINTS: boolean;
+  ANIMATION: boolean;
+};
+
+export type IgnoreRulesV2 = {
+  hard_disable: boolean;
+  preserve_state: boolean;
+};
+
 export type SchemaV2 = {
   schemaVersion: 2;
   mode: HypnagnosisMode;
@@ -75,6 +93,8 @@ export type SchemaV2 = {
   humanizerQualities: HumanizerQualitiesMap;
   constraints: ConstraintBlock;
   animation: AnimationConfigV2;
+  MODULES: ModuleToggleMap;
+  IGNORE_RULES: IgnoreRulesV2;
 };
 
 export const defaultSchemaV2: SchemaV2 = {
@@ -130,5 +150,21 @@ export const defaultSchemaV2: SchemaV2 = {
     curve: 's-curve',
     timeline: [],
     keyframes: [],
+  },
+  MODULES: {
+    INPUT: true,
+    STATE_MAP: true,
+    HALLUCINATION: true,
+    HYPNA_MATRIX: true,
+    PROMPT_GENOME: true,
+    VISUAL_GRAMMAR: true,
+    INFLUENCE_ENGINE: true,
+    PALETTE: true,
+    CONSTRAINTS: true,
+    ANIMATION: false,
+  },
+  IGNORE_RULES: {
+    hard_disable: false,
+    preserve_state: false,
   },
 };

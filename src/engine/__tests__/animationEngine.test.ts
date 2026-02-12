@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { defaultSchemaV2 } from '../../schema/hypnagnosisSchemaV2';
 import {
   buildFrameSeries,
   buildFrameTimeline,
   exportFramePromptSheet,
+  exportSchema,
   exportTimelineJSON,
   interpolateAtTime,
 } from '../animationEngine';
@@ -16,8 +17,28 @@ const schema = {
     enabled: true,
     frames: 5,
     keyframes: [
-      { t: 0, state: 'ANCHOR', curves: { 'HALLUCINATION.level': 20, 'INFLUENCE-WEIGHTS.smear': 10, 'STATE-MAP.state-name': 'ANCHOR' } },
-      { t: 1, state: 'WATCHER', curves: { 'HALLUCINATION.level': 80, 'INFLUENCE-WEIGHTS.smear': 90, 'STATE-MAP.state-name': 'WATCHER' } },
+      {
+        t: 0,
+        state: 'ANCHOR',
+        curves: {
+          'HALLUCINATION.level': 20,
+          'INFLUENCE-WEIGHTS.smear': 10,
+          'HYPNA-MATRIX.material': 15,
+          'PALETTE.tint': 10,
+          'STATE-MAP.state-name': 'ANCHOR',
+        },
+      },
+      {
+        t: 1,
+        state: 'WATCHER',
+        curves: {
+          'HALLUCINATION.level': 80,
+          'INFLUENCE-WEIGHTS.smear': 90,
+          'HYPNA-MATRIX.material': 85,
+          'PALETTE.tint': 70,
+          'STATE-MAP.state-name': 'WATCHER',
+        },
+      },
     ],
   },
 };
@@ -57,4 +78,79 @@ describe('animationEngine', () => {
     const second = buildFrameSeries(schema, compilePromptV2);
     expect(first).toEqual(second);
   });
+
+  it('ignores disabled-module curves and does not mutate input schema', () => {
+    const disabledInput = {
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        INFLUENCE_ENGINE: false,
+        HYPNA_MATRIX: false,
+        PALETTE: false,
+      },
+    };
+
+    const snapshot = JSON.parse(JSON.stringify(disabledInput));
+    const mid = interpolateAtTime(disabledInput, 0.5);
+
+    expect(mid.humanizerLevel).toBeUndefined();
+    expect(mid.mutateStrength).toBeUndefined();
+    expect(mid.hallucination).toBeCloseTo(50, 6);
+
+    expect(disabledInput).toEqual(snapshot);
+    expect(disabledInput.animation.keyframes[0].curves['INFLUENCE-WEIGHTS.smear']).toBe(10);
+    expect(disabledInput.animation.keyframes[0].curves['HYPNA-MATRIX.material']).toBe(15);
+    expect(disabledInput.animation.keyframes[0].curves['PALETTE.tint']).toBe(10);
+  });
+
+  it('returns empty frame series with clear status when MODULES.ANIMATION is false', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const frames = buildFrameSeries({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        ANIMATION: false,
+      },
+    }, compilePromptV2);
+
+    expect(frames).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith('buildFrameSeries: skipped because MODULES.ANIMATION is disabled');
+
+    warnSpy.mockRestore();
+  });
+
+  it('exports enabled-only schema with disabled module tags', () => {
+    const exported = exportSchema({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        INFLUENCE_ENGINE: false,
+        PALETTE: false,
+      },
+    }, { enabledOnly: true });
+
+    const parsed = JSON.parse(exported);
+    expect(parsed.MODULES.INFLUENCE_ENGINE).toBe(false);
+    expect(parsed.MODULES.PALETTE).toBe(false);
+    expect(parsed.exportMeta.mode).toBe('enabled-only');
+    expect(parsed.exportMeta.disabledModules).toContain('INFLUENCE_ENGINE');
+    expect(parsed.exportMeta.disabledModules).toContain('PALETTE');
+  });
+
+  it('optionally annotates frame prompt sheet with disabled module notes', () => {
+    const frames = buildFrameSeries({
+      ...schema,
+      MODULES: {
+        ...schema.MODULES,
+        CONSTRAINTS: false,
+      },
+    }, compilePromptV2);
+
+    const sheet = exportFramePromptSheet(frames, { includeDisabledNotes: true });
+    expect(sheet).toContain('Disabled modules: CONSTRAINTS');
+
+    const plainSheet = exportFramePromptSheet(frames, { includeDisabledNotes: false });
+    expect(plainSheet).not.toContain('Disabled modules:');
+  });
+
 });

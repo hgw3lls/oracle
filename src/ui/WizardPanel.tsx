@@ -22,6 +22,27 @@ const STEPS = [
   'Review & Export',
 ] as const;
 
+const MODULE_ORDER: Array<keyof SchemaV2['MODULES']> = [
+  'INPUT',
+  'STATE_MAP',
+  'HALLUCINATION',
+  'HYPNA_MATRIX',
+  'PROMPT_GENOME',
+  'VISUAL_GRAMMAR',
+  'INFLUENCE_ENGINE',
+  'PALETTE',
+  'CONSTRAINTS',
+  'ANIMATION',
+];
+
+const STEP_MODULE_MAP: Partial<Record<(typeof STEPS)[number], keyof SchemaV2['MODULES']>> = {
+  Intent: 'INPUT',
+  'State Map': 'STATE_MAP',
+  'Hallucination Physics': 'HALLUCINATION',
+  'Influence & Materials': 'INFLUENCE_ENGINE',
+  Animation: 'ANIMATION',
+};
+
 export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }: WizardPanelProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [keyframeText, setKeyframeText] = useState('[]');
@@ -63,7 +84,15 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
     applyForm(next);
   };
 
+  const setModuleEnabled = (moduleName: keyof SchemaV2['MODULES'], enabled: boolean) => {
+    patch('MODULES', {
+      ...form.MODULES,
+      [moduleName]: enabled,
+    });
+  };
+
   const step = STEPS[stepIndex];
+  const stepModule = STEP_MODULE_MAP[step];
 
   return (
     <section className="panel wizard-panel">
@@ -81,10 +110,38 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
               {idx + 1}. {label}
             </button>
           ))}
+
+          <fieldset className="wizard-modules-panel">
+            <legend>Modules</legend>
+            {MODULE_ORDER.map((moduleName) => (
+              <label key={moduleName} className="check-row wizard-module-row">
+                <input
+                  type="checkbox"
+                  checked={form.MODULES[moduleName]}
+                  onChange={(e) => setModuleEnabled(moduleName, e.target.checked)}
+                />
+                {moduleName}
+              </label>
+            ))}
+          </fieldset>
         </aside>
 
         <div className="wizard-step-content">
           <h3>{step}</h3>
+
+          {stepModule ? (
+            <fieldset>
+              <legend>Step Controls</legend>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={!form.MODULES[stepModule]}
+                  onChange={(e) => setModuleEnabled(stepModule, !e.target.checked)}
+                />
+                Disable this module ({stepModule})
+              </label>
+            </fieldset>
+          ) : null}
 
           {step === 'Intent' ? (
             <fieldset>
@@ -248,6 +305,8 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
           {step === 'Review & Export' ? (
             <fieldset>
               <legend>Review</legend>
+              <p><strong>Enabled modules:</strong> {MODULE_ORDER.filter((moduleName) => form.MODULES[moduleName]).join(', ') || 'none'}</p>
+              <p><strong>Disabled modules:</strong> {MODULE_ORDER.filter((moduleName) => !form.MODULES[moduleName]).join(', ') || 'none'}</p>
               <p><strong>Compiled prompt (single):</strong></p>
               <pre>{compiled.compiledPrompt}</pre>
               <h4>Debug Sections</h4>
@@ -267,6 +326,7 @@ export default function WizardPanel({ form, patch, applyForm, toggleStyleToken }
 
           <div className="button-row wizard-nav">
             <button type="button" className="tab-btn" onClick={() => setStepIndex((n) => Math.max(0, n - 1))} disabled={stepIndex === 0}>Back</button>
+            <button type="button" className="tab-btn" onClick={() => setStepIndex((n) => Math.min(STEPS.length - 1, n + 1))} disabled={stepIndex === STEPS.length - 1}>Skip step</button>
             <button type="button" className="tab-btn" onClick={() => setStepIndex((n) => Math.min(STEPS.length - 1, n + 1))} disabled={stepIndex === STEPS.length - 1}>Next</button>
           </div>
         </div>

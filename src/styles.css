@@ -415,6 +415,16 @@ button:disabled {
   align-content: start;
 }
 
+.wizard-modules-panel {
+  margin-top: 0.25rem;
+  background: #fff7a8;
+}
+
+.wizard-module-row {
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+}
+
 .wizard-step-content h3 {
   margin: 0 0 0.55rem;
   text-transform: uppercase;
