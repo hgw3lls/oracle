@@ -15,36 +15,48 @@ import StateBrowserPanel from './ui/StateBrowserPanel';
 import OutputPanel from './ui/OutputPanel';
 import WizardPanel from './ui/WizardPanel';
 
-const snapshotToState = (snapshot, idx, panelName, stateName) => ({
-  mode: 'FULL',
-  subject: '',
-  notes: '',
-  styleTokens: [],
-  step: idx,
-  steps: 3,
-  stateName,
-  flow: panelName,
-  seed: panelName,
-  batchId: panelName,
-  linkedFrom: null,
-  hallucination: Math.round(snapshot.params.hallucination),
-  temporal: Math.round(snapshot.params.temporal),
-  material: Math.round(snapshot.params.material),
-  space: Math.round(snapshot.params.space),
-  symbol: Math.round(snapshot.params.symbol),
-  agency: Math.round(snapshot.params.agency),
-  saturation: snapshot.params.palette > 65 ? 'dense' : snapshot.params.palette > 40 ? 'balanced' : 'sparse',
-  motion: snapshot.params.gesture > 70 ? 'explosive' : snapshot.params.gesture > 45 ? 'kinetic' : 'flowing',
-  grain: Math.round(snapshot.params.grain),
-  lineWobble: Math.round(snapshot.params['line-wobble']),
-  erasure: Math.round(snapshot.params.erasure),
-  annotation: Math.round(snapshot.params.annotation),
-  paletteValue: Math.round(snapshot.params.palette),
-  gestureValue: Math.round(snapshot.params.gesture),
-  diffSummary: snapshot.diffSummary,
-  mutationNote: panelName,
-  prompt: snapshot.compiledPrompt,
-});
+const safeRounded = (value, fallback) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.round(numeric);
+};
+
+const snapshotToState = (snapshot, idx, panelName, stateName) => {
+  const params = snapshot?.params || snapshot || {};
+  const palette = safeRounded(params.palette ?? params.paletteValue, 50);
+  const gesture = safeRounded(params.gesture ?? params.gestureValue, 48);
+
+  return {
+    mode: 'FULL',
+    subject: '',
+    notes: '',
+    styleTokens: [],
+    step: idx,
+    steps: 3,
+    stateName,
+    flow: panelName,
+    seed: panelName,
+    batchId: panelName,
+    linkedFrom: null,
+    hallucination: safeRounded(params.hallucination, 50),
+    temporal: safeRounded(params.temporal, 55),
+    material: safeRounded(params.material, 55),
+    space: safeRounded(params.space, 55),
+    symbol: safeRounded(params.symbol, 55),
+    agency: safeRounded(params.agency, 55),
+    saturation: palette > 65 ? 'dense' : palette > 40 ? 'balanced' : 'sparse',
+    motion: gesture > 70 ? 'explosive' : gesture > 45 ? 'kinetic' : 'flowing',
+    grain: safeRounded(params.grain, 40),
+    lineWobble: safeRounded(params['line-wobble'] ?? params.lineWobble, 40),
+    erasure: safeRounded(params.erasure, 32),
+    annotation: safeRounded(params.annotation, 42),
+    paletteValue: palette,
+    gestureValue: gesture,
+    diffSummary: snapshot?.diffSummary || 'snapshot fallback',
+    mutationNote: panelName,
+    prompt: snapshot?.compiledPrompt || '',
+  };
+};
 
 const safeRounded = (value, fallback) => {
   const numeric = Number(value);
