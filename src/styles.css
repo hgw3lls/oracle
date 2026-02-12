@@ -398,3 +398,40 @@ button:disabled {
   border: 2px solid #000;
   background: #f8f8f8;
 }
+
+.wizard-panel {
+  order: 1;
+}
+
+.wizard-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0.7rem;
+}
+
+.wizard-sidebar {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.wizard-step-content h3 {
+  margin: 0 0 0.55rem;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.wizard-nav {
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 900px) {
+  .wizard-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wizard-mini-btn {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.45rem;
+}
