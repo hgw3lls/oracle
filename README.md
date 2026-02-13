@@ -1,62 +1,42 @@
-# Oracle
+# Hypnagnosis Oracle v2
 
-Oracle now runs as a React + Vite web app that refactors the original Python/Tkinter prompt builder into a browser-based experience.
+Schema V2 is now the **single source of truth** for the web app.
 
-## What changed
+## Architecture
 
-- The old Python app remains in the repo for reference (`hypna_prompt_gui_v3.py`).
-- The web app now includes:
-  - Prompt input controls (mode, subject, notes, style tokens)
-  - Auto-evolve state generation controls
-  - Humanizer controls
-  - State browser and compiled prompt output panel
+- `src/schema/schemaV2.ts`: canonical Schema V2 types and module map.
+- `src/schema/defaults.ts`: `defaultSchemaV2()` baseline document.
+- `src/schema/validate.ts`: lightweight runtime validation (ranges, enums, palette plate limits/hex).
+- `src/state/store.ts`: Zustand store holding `schema: SchemaV2` and actions:
+  - `set(path, value)`
+  - `merge(partial)`
+  - `toggleModule(moduleKey)`
+  - `resetToDefaults()`
+  - `importSchema(json)`
+- `src/ui/*`: brutalist shell with module disable toggles in Modules panel and Wizard step headers.
 
-## Local development
+## State management choice
+
+Zustand is used for this phase because it keeps Schema V2 orchestration small and direct while preserving strict TypeScript control over the schema document.
+
+## Dev
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Production build
+## Build
 
 ```bash
 npm run build
 npm run preview
 ```
 
+## Test
 
-## Deploy to GitHub Pages
-
-This repo is configured for **GitHub Pages (GitHub Actions source)** with a Vite base path of:
-
-```txt
-/oracle/
+```bash
+npm run test
 ```
 
-That base is required for project pages hosted at:
-
-```txt
-https://<your-user-or-org>.github.io/oracle/
-```
-
-### Workflow
-
-Deployment workflow file:
-
-- `.github/workflows/deploy.yml`
-
-It runs on pushes to `main` and uses official GitHub Pages actions:
-
-1. `actions/configure-pages`
-2. build (`npm install && npm run build`)
-3. `actions/upload-pages-artifact` (from `dist/`)
-4. `actions/deploy-pages`
-
-### Required repository setting
-
-In GitHub UI:
-
-- **Settings → Pages → Source: GitHub Actions**
-
-Without this setting, the workflow can run but Pages will not publish from Actions.
+Included tests cover module toggle defaults, preserve-state behavior, and validator range checks.
