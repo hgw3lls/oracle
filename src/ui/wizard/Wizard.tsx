@@ -21,6 +21,7 @@ const steps: { name: string; moduleKey: ModuleKey; node: React.ReactNode }[] = [
 
 export function Wizard() {
   const currentStep = useOracleStore((s) => s.currentStep);
+  const setStep = useOracleStore((s) => s.setStep);
   const modules = useOracleStore((s) => s.schema.MODULES);
   const toggleModule = useOracleStore((s) => s.toggleModule);
   const step = steps[currentStep];
@@ -30,10 +31,19 @@ export function Wizard() {
     <div className="wizard-step">
       <div className="step-header">
         <h3>{step.name}</h3>
-        <label>
-          <input type="checkbox" checked={disabled} onChange={() => toggleModule(step.moduleKey)} />
-          {' '}Disable module
-        </label>
+        <div className="step-actions">
+          <button
+            type="button"
+            onClick={() => setStep(Math.min(currentStep + 1, steps.length - 1))}
+            aria-label="Skip step"
+          >
+            SKIP STEP
+          </button>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={!disabled} onChange={() => toggleModule(step.moduleKey)} />
+            MODULE ENABLED
+          </label>
+        </div>
       </div>
       <fieldset disabled={disabled} className={disabled ? 'step-disabled' : ''}>
         {step.node}

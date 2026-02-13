@@ -13,28 +13,33 @@ export function Shell() {
 
   return (
     <div className="shell">
-      <header><h1>Hypnagnosis Oracle v2</h1></header>
+      <header>
+        <h1>HYPNAGNOSIS ORACLE V2</h1>
+        <p>Wizard-first prompt architecture with module-level control.</p>
+      </header>
       <Tabs />
       <div className="layout">
-        <aside className="left">
+        <aside className="left" aria-label="Wizard step navigation and modules">
           <ModulesPanel />
           {tab === 'wizard' && (
             <nav className="step-list">
+              <h3>WIZARD STEPS</h3>
               {wizardSteps.map((s, i) => (
-                <button key={s.name} className={i === step ? 'step active' : 'step'} onClick={() => setStep(i)}>{s.name}</button>
+                <button key={s.name} className={i === step ? 'step active' : 'step'} onClick={() => setStep(i)}>
+                  {i + 1}. {s.name.toUpperCase()}
+                </button>
               ))}
             </nav>
           )}
         </aside>
-        <main className="center">
+        <main className="center" aria-label="Primary work area">
           {tab === 'wizard' && <Wizard />}
           {tab === 'live' && <LivePromptPanel />}
           {tab === 'frames' && <FrameSeriesPanel />}
           {tab === 'presets' && <PresetsPanel />}
         </main>
-        <aside className="right">
+        <aside className="right" aria-label="Live compiled prompt preview">
           <LivePromptPanel />
-          <div className="panel"><h3>Debug</h3><p>Schema, timeline, and palette engines are scaffolded stubs.</p></div>
         </aside>
       </div>
     </div>
