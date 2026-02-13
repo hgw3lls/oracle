@@ -1,79 +1,83 @@
-import { type SchemaV2 } from '../schema/hypnagnosisSchemaV2';
-import { migrateToV2 } from '../schema/migrateToV2';
+import type { SchemaV2 } from '../schema/schemaV2';
+import { deepMerge } from '../utils/deepMerge';
+import { renderInfluenceBehaviors } from './influences';
+import { renderPaletteFooter } from './palette/paletteEngine';
 
-type DebugSection = { title: string; text: string };
+export type DebugSection = { title: string; text: string };
 
-export const compilePromptV2 = (schemaInput: SchemaV2, frameOverrides: Partial<SchemaV2> = {}) => {
-  const schema = migrateToV2({ ...schemaInput, ...frameOverrides });
-  const isOn = (moduleName: keyof SchemaV2['MODULES']) => schema.MODULES[moduleName] || !schema.IGNORE_RULES.hard_disable;
+export function compilePromptV2(
+  schema: SchemaV2,
+  overrides?: Partial<SchemaV2>,
+): { compiledPrompt: string; debugSections: DebugSection[] } {
+  const merged = overrides
+    ? (deepMerge(JSON.parse(JSON.stringify(schema)) as Record<string, unknown>, overrides as Record<string, unknown>) as SchemaV2)
+    : schema;
 
-  const lines: string[] = ['HYPNAGNOSIS ORACLE V2'];
+  const lines: string[] = [];
   const debugSections: DebugSection[] = [];
+  const on = merged.MODULES;
 
-  if (isOn('INPUT')) {
-    lines.push(`INPUT :: mode=${schema.INPUT.mode} subject=${schema.INPUT.subject || 'Unnamed subject'} seed=${schema.INPUT.seed} batch=${schema.INPUT['batch-id']}`);
-    if (schema.INPUT.notes) lines.push(`NOTES :: ${schema.INPUT.notes}`);
+  const include = (module: keyof SchemaV2['MODULES']) => on[module];
+
+  // 1) Intent/Subject
+  if (include('INPUT') && include('PROMPT_GENOME')) {
+    lines.push(`${merged.PROMPT_GENOME.prefix}`);
+    lines.push(`Intent: ${merged.INPUT.subject} in ${merged.INPUT.medium}. Structure: ${merged.PROMPT_GENOME.structure}.`);
+    debugSections.push({ title: '1) Intent/Subject', text: 'included (INPUT + PROMPT_GENOME)' });
+  } else {
+    debugSections.push({ title: '1) Intent/Subject', text: 'skipped (INPUT or PROMPT_GENOME disabled)' });
   }
 
-  if (isOn('STATE_MAP')) {
-    lines.push(`STATE MAP :: ${schema['STATE-MAP']['state-name']} via ${schema['STATE-MAP'].flow}`);
+  // 2) Hallucination + perception + hypna matrix
+  if (include('HALLUCINATION') && include('PROMPT_GENOME') && include('HYPNA_MATRIX')) {
+    lines.push(
+      `Perception physics: ${merged.HALLUCINATION.profile}, drift=${Math.round(merged.HALLUCINATION.drift)}; ${merged.PROMPT_GENOME.perception}; matrix(${merged.HYPNA_MATRIX.axis_x}/${merged.HYPNA_MATRIX.axis_y}) depth=${Math.round(merged.HYPNA_MATRIX.depth)}.`,
+    );
+    debugSections.push({ title: '2) Hallucination physics + perception', text: 'included (HALLUCINATION + PROMPT_GENOME + HYPNA_MATRIX)' });
+  } else {
+    debugSections.push({ title: '2) Hallucination physics + perception', text: 'skipped (required module disabled)' });
   }
 
-  if (isOn('HALLUCINATION')) {
-    lines.push(`HALLUCINATION LEVEL :: ${schema.HALLUCINATION.level}`);
+  // 3) Diagram/structure
+  if (include('VISUAL_GRAMMAR')) {
+    lines.push(`Diagram: ${merged.VISUAL_GRAMMAR.framing} frame, ${merged.VISUAL_GRAMMAR.lens} lens, detail=${Math.round(merged.VISUAL_GRAMMAR.detail)}.`);
+    debugSections.push({ title: '3) Diagram/structure', text: 'included (VISUAL_GRAMMAR)' });
+  } else {
+    debugSections.push({ title: '3) Diagram/structure', text: 'skipped (VISUAL_GRAMMAR disabled)' });
   }
 
-  if (isOn('HYPNA_MATRIX')) {
-    const m = schema['HYPNA-MATRIX'];
-    lines.push(`HYPNA MATRIX :: temporal ${m.temporal}, material ${m.material}, space ${m.space}, symbol ${m.symbol}, agency ${m.agency}`);
-  }
-
-  if (isOn('PROMPT_GENOME')) {
-    const g = schema['PROMPT-GENOME'];
-    lines.push(`PROMPT GENOME :: ${g.structure.composition}, tension ${g.structure.tension}, recursion ${g.structure.recursion}; grain ${g.perception.grain}, wobble ${g.perception['line-wobble']}, erasure ${g.perception.erasure}, annotation ${g.perception.annotation}`);
-  }
-
-  if (isOn('VISUAL_GRAMMAR')) {
-    const v = schema['VISUAL-GRAMMAR'];
-    lines.push(`VISUAL GRAMMAR :: field density ${v['field-structure'].density}, segmentation ${v['field-structure'].segmentation}, rhythm ${v['field-structure'].rhythm}; node bias ${v['diagram-behavior'].node_bias}, arc noise ${v['diagram-behavior'].arc_noise}`);
-  }
-
-  if (isOn('INFLUENCE_ENGINE')) {
-    const weights = schema['INFLUENCE-ENGINE']['INFLUENCE-WEIGHTS'];
-    const behaviors = schema['INFLUENCE-ENGINE']['MATERIAL-BEHAVIORS'];
-    lines.push('INFLUENCE MATERIAL ACTIONS ::');
-    Object.keys(weights).forEach((k) => {
-      const key = k as keyof typeof weights;
-      lines.push(`- ${key} (${weights[key]}): ${behaviors[key]}`);
-    });
-    debugSections.push({ title: 'INFLUENCE-WEIGHTS', text: JSON.stringify(weights, null, 2) });
-  }
-
-  if (isOn('PALETTE')) {
-    const p = schema.PALETTE;
-    if (p.mode === 'RISO_PLATES') {
-      const plateText = p.riso.plates.map((plate) => `${plate.name} ${plate.hex} (${plate.role}, opacity ${plate.opacity})`).join(', ');
-      lines.push(`PALETTE :: RISO plates ${plateText}; flat ink, visible overlaps, slight misregistration, no gradients.`);
-    } else if (p.mode === 'IMAGE_EXTRACT') {
-      const hexes = p.image_extract.palette.map((entry) => entry.hex).join(', ');
-      lines.push(`PALETTE :: use this exact palette: ${hexes}`);
-    } else if (p.mode === 'COLOR_WHEEL') {
-      const hexes = p.wheel.palette.join(', ');
-      lines.push(`PALETTE :: use this exact palette: ${hexes}`);
-    } else {
-      lines.push(`PALETTE :: ${p.descriptive.text}; keywords ${p.descriptive.keywords.join(', ') || 'none'}; enforce limited palette and flat inks.`);
+  // 4) Influence/material behaviors
+  if (include('INFLUENCE_ENGINE')) {
+    const behaviorLines = renderInfluenceBehaviors(merged.INFLUENCE_ENGINE.weights, { punctuation: 'period' }).slice(0, 3);
+    if (behaviorLines.length > 0) {
+      lines.push(`Actions: ${behaviorLines.join(' ')}`);
     }
+    debugSections.push({ title: '4) Influence/material behaviors', text: 'included (INFLUENCE_ENGINE)' });
+  } else {
+    debugSections.push({ title: '4) Influence/material behaviors', text: 'skipped (INFLUENCE_ENGINE disabled)' });
   }
 
-  if (isOn('CONSTRAINTS')) {
-    const req = schema.CONSTRAINTS.require.length ? `REQUIRE: ${schema.CONSTRAINTS.require.join('; ')}` : null;
-    const forb = schema.CONSTRAINTS.forbid.length ? `FORBID: ${schema.CONSTRAINTS.forbid.join('; ')}` : null;
-    [req, forb].filter(Boolean).forEach((line) => lines.push(`CONSTRAINTS :: ${line}`));
+  // 5) Palette footer
+  if (include('PALETTE')) {
+    const plates = merged.PALETTE.riso_plates.slice(0, 4).map((p) => `${p.role}:${p.hex}`).join(', ');
+    lines.push(`Palette: ${merged.PALETTE.mode}; plates=${plates || 'auto'}. ${renderPaletteFooter(merged.PALETTE)}`);
+    debugSections.push({ title: '5) Palette footer', text: 'included (PALETTE)' });
+  } else {
+    debugSections.push({ title: '5) Palette footer', text: 'skipped (PALETTE disabled)' });
   }
 
-  const included = Object.keys(schema.MODULES).filter((key) => schema.MODULES[key as keyof SchemaV2['MODULES']]);
-  const skipped = Object.keys(schema.MODULES).filter((key) => !schema.MODULES[key as keyof SchemaV2['MODULES']]);
-  debugSections.unshift({ title: 'MODULES', text: `included=${included.join(', ') || 'none'}\nskipped=${skipped.join(', ') || 'none'}` });
+  // 6) Constraints footer
+  if (include('CONSTRAINTS')) {
+    lines.push(`Constraints: require tactile ink overlap; forbid ${merged.CONSTRAINTS.avoid}; max_tokens=${merged.CONSTRAINTS.max_tokens}.`);
+    debugSections.push({ title: '6) Constraints footer', text: 'included (CONSTRAINTS)' });
+  } else {
+    debugSections.push({ title: '6) Constraints footer', text: 'skipped (CONSTRAINTS disabled)' });
+  }
+
+  if (include('PROMPT_GENOME')) {
+    lines.push(`Style tokens: ${merged.PROMPT_GENOME.style_tokens.slice(0, 6).join(', ')}. Seed=${merged.PROMPT_GENOME.seed}.`);
+    lines.push(merged.PROMPT_GENOME.suffix);
+  }
 
   return { compiledPrompt: lines.join('\n'), debugSections };
-};
+}

@@ -1,62 +1,76 @@
-# Oracle
+# Hypnagnosis Oracle v2
 
-Oracle now runs as a React + Vite web app that refactors the original Python/Tkinter prompt builder into a browser-based experience.
+Schema V2 is the **single source of truth** for the web app.
 
-## What changed
+## Wizard-first UX
 
-- The old Python app remains in the repo for reference (`hypna_prompt_gui_v3.py`).
-- The web app now includes:
-  - Prompt input controls (mode, subject, notes, style tokens)
-  - Auto-evolve state generation controls
-  - Humanizer controls
-  - State browser and compiled prompt output panel
+The default interface is the **Wizard**:
+- left column: step list + global module toggles,
+- center column: current step content,
+- right column: live compiled prompt preview.
 
-## Local development
+Tabs for **Live / Frames / Presets** remain available for focused workflows.
+
+## Schema v2 overview
+
+Primary schema blocks in `src/schema/schemaV2.ts`:
+- `MODULES` + `IGNORE_RULES`
+- `INPUT`
+- `STATE_MAP`
+- `HALLUCINATION`
+- `HYPNA_MATRIX`
+- `PROMPT_GENOME`
+- `VISUAL_GRAMMAR`
+- `INFLUENCE_ENGINE`
+- `PALETTE`
+- `CONSTRAINTS`
+- `ANIMATION`
+
+`defaultSchemaV2()` in `src/schema/defaults.ts` provides the canonical initial document.
+
+## How module toggles work
+
+- Every subsystem can be enabled/disabled from **ModulesPanel** or per-step in the Wizard header.
+- Disabled modules are omitted from `compilePromptV2` output and from downstream derived logic.
+- `IGNORE_RULES.hard_disable=true` means disabled modules do not influence prompt generation or animation interpolation.
+- **Minimal Mode** button in ModulesPanel disables everything except `INPUT`, `PROMPT_GENOME`, and `CONSTRAINTS` (with optional `PALETTE`).
+
+## How to export prompt sheets
+
+1. Go to the **Frames** tab.
+2. Configure animation in the **Animation** wizard step (fps/duration/export mode/keyframes).
+3. In **Frame Series** panel:
+   - click **Export timeline JSON** for full frame metadata,
+   - click **Export frame prompt sheet (.txt)** for plain-text prompt sheets.
+
+## Architecture
+
+- `src/schema/*`: schema, defaults, validation, migration.
+- `src/state/*`: Zustand store + persistence.
+- `src/engine/*`: compile, influences, constraints, animation, palette.
+- `src/ui/*`: shell, panels, wizard and steps.
+- `src/styles/*`: brutalist tokens and base styles.
+
+## State management choice
+
+Zustand keeps Schema V2 orchestration compact and type-safe while avoiding Redux boilerplate.
+
+## Dev
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Production build
+## Build
 
 ```bash
 npm run build
 npm run preview
 ```
 
+## Test
 
-## Deploy to GitHub Pages
-
-This repo is configured for **GitHub Pages (GitHub Actions source)** with a Vite base path of:
-
-```txt
-/oracle/
+```bash
+npm run test
 ```
-
-That base is required for project pages hosted at:
-
-```txt
-https://<your-user-or-org>.github.io/oracle/
-```
-
-### Workflow
-
-Deployment workflow file:
-
-- `.github/workflows/deploy.yml`
-
-It runs on pushes to `main` and uses official GitHub Pages actions:
-
-1. `actions/configure-pages`
-2. build (`npm install && npm run build`)
-3. `actions/upload-pages-artifact` (from `dist/`)
-4. `actions/deploy-pages`
-
-### Required repository setting
-
-In GitHub UI:
-
-- **Settings → Pages → Source: GitHub Actions**
-
-Without this setting, the workflow can run but Pages will not publish from Actions.

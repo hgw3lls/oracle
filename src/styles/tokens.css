@@ -1,0 +1,17 @@
+:root {
+  --bg: #050505;
+  --panel: #0f0f0f;
+  --panel-alt: #151515;
+  --fg: #f5f5f5;
+  --fg-muted: #c7c7c7;
+  --line: #ffffff;
+  --line-soft: #8f8f8f;
+  --focus: #ffff00;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --border-strong: 3px;
+  --border-mid: 2px;
+}
