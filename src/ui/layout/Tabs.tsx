@@ -1,6 +1,6 @@
 import { useOracleStore, type Tab } from '../../state/store';
 
-const tabs: Tab[] = ['wizard', 'live', 'frames', 'presets'];
+const tabs: Tab[] = ['wizard', 'manager', 'live', 'frames', 'presets'];
 
 export function Tabs() {
   const tab = useOracleStore((s) => s.tab);

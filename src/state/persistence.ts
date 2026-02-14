@@ -1,12 +1,12 @@
 import type { SchemaV2 } from '../schema/schemaV2';
 
-const KEY = 'hypnagnosis-oracle-v2';
+const KEY = 'hypnagnosis-oracle-v3';
 
 // Bump this whenever the storage wrapper shape changes.
-export const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 2;
 
 export type StoredStateV1 = {
-  storageVersion: 1;
+  storageVersion: number;
   savedAt: string;
   schema: SchemaV2;
 };

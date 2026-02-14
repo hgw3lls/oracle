@@ -4,6 +4,7 @@ import { ModulesPanel } from '../panels/ModulesPanel';
 import { LivePromptPanel } from '../panels/LivePromptPanel';
 import { FrameSeriesPanel } from '../panels/FrameSeriesPanel';
 import { PresetsPanel } from '../panels/PresetsPanel';
+import { PromptManagerPanel } from '../panels/PromptManagerPanel';
 import { Wizard, wizardSteps } from '../wizard/Wizard';
 
 export function Shell() {
@@ -19,8 +20,8 @@ export function Shell() {
       <header>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <h1>HYPNAGNOSIS ORACLE V2</h1>
-            <p>Wizard-first prompt architecture with module-level control.</p>
+            <h1>HYPNAGNOSIS ORACLE V3</h1>
+            <p>Wizard-first + Prompt Manager (blocks/templates/history/variations).</p>
             <p style={{ marginTop: 6, opacity: 0.8 }}>batch-id: <strong>{batchId}</strong> · seed: <strong>{seedString}</strong></p>
           </div>
           <div>
@@ -53,6 +54,7 @@ export function Shell() {
         </aside>
         <main className="center" aria-label="Primary work area">
           {tab === 'wizard' && <Wizard />}
+          {tab === 'manager' && <PromptManagerPanel />}
           {tab === 'live' && <LivePromptPanel />}
           {tab === 'frames' && <FrameSeriesPanel />}
           {tab === 'presets' && <PresetsPanel />}

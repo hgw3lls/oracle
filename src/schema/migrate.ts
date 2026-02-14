@@ -1,13 +1,25 @@
 import { defaultSchemaV2 } from './defaults';
 import { isSchemaV2 } from './validate';
-import type { SchemaV2 } from './schemaV2';
+import type { SchemaV3 } from './schemaV2';
 
-export function migrateToV2(input: unknown): SchemaV2 {
+export function migrateToV3(input: unknown): SchemaV3 {
   if (isSchemaV2(input)) return input;
 
   const base = defaultSchemaV2();
   if (!input || typeof input !== 'object') return base;
   const raw = input as Record<string, unknown>;
+
+  // If this looks like a prior v2 schema, up-convert it by layering onto defaults.
+  if (raw.version === 2 && typeof raw.MODULES === 'object') {
+    const v2 = raw as unknown as Partial<SchemaV3>;
+    return {
+      ...base,
+      ...v2,
+      version: 3,
+      // Ensure new block exists
+      PROMPT_MANAGER: (v2 as any).PROMPT_MANAGER ?? base.PROMPT_MANAGER,
+    };
+  }
 
   return {
     ...base,
@@ -26,3 +38,6 @@ export function migrateToV2(input: unknown): SchemaV2 {
     },
   };
 }
+
+// Back-compat name (older parts of the app import migrateToV2)
+export const migrateToV2 = migrateToV3;

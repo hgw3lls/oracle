@@ -1,4 +1,4 @@
-import { MODULE_KEYS, type SchemaV2 } from './schemaV2';
+import { MODULE_KEYS, type SchemaV3 } from './schemaV2';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -11,10 +11,10 @@ export type ValidationResult = {
 
 export function validateSchemaV2(value: unknown): ValidationResult {
   const errors: string[] = [];
-  const s = value as SchemaV2;
+  const s = value as SchemaV3;
 
   if (!s || typeof s !== 'object') return { valid: false, errors: ['schema must be an object'] };
-  if (s.version !== 2) errors.push('version must be 2');
+  if (s.version !== 3) errors.push('version must be 3');
 
   for (const key of MODULE_KEYS) {
     if (typeof s.MODULES?.[key] !== 'boolean') errors.push(`MODULES.${key} must be boolean`);
@@ -69,9 +69,18 @@ export function validateSchemaV2(value: unknown): ValidationResult {
   if (!inRange(s.ANIMATION?.every_n, 1, 60)) errors.push('ANIMATION.every_n out of range 1..60');
   if (!['keyframes_only', 'all_frames', 'every_n'].includes(s.ANIMATION?.export_mode)) errors.push('ANIMATION.export_mode invalid');
 
+  // Prompt manager (light validation; don't be brittle)
+  const pm = s.PROMPT_MANAGER;
+  if (typeof pm?.enabled !== 'boolean') errors.push('PROMPT_MANAGER.enabled must be boolean');
+  if (!['MINIMAL', 'BALANCED', 'MAX_CONTROL'].includes(pm?.compile_mode as string)) errors.push('PROMPT_MANAGER.compile_mode invalid');
+  if (!Array.isArray(pm?.prompts)) errors.push('PROMPT_MANAGER.prompts must be array');
+  if (!Array.isArray(pm?.history)) errors.push('PROMPT_MANAGER.history must be array');
+
   return { valid: errors.length === 0, errors };
 }
 
-export function isSchemaV2(value: unknown): value is SchemaV2 {
+export function isSchemaV2(value: unknown): value is SchemaV3 {
   return validateSchemaV2(value).valid;
 }
+
+export const isSchemaV3 = isSchemaV2;

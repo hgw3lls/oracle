@@ -78,7 +78,15 @@ export function PaletteStep() {
           </select>
           <label>Max colors</label>
           <input type="number" min={1} max={8} value={schema.PALETTE.image_extract.max_colors} onChange={(e) => setValue('PALETTE.image_extract.max_colors', Number(e.target.value))} />
-          <input
+                    <label>
+            <input
+              type="checkbox"
+              checked={schema.PALETTE.image_extract.enabled}
+              onChange={(e) => setValue('PALETTE.image_extract.enabled', e.target.checked)}
+            />{' '}
+            Auto-apply extracted palette as Riso plates
+          </label>
+<input
             type="file"
             accept="image/*"
             onChange={async (e) => {
@@ -87,7 +95,12 @@ export function PaletteStep() {
               const data = await fileToImageData(file);
               const extracted = extractDominantPalette(data, schema.PALETTE.image_extract.max_colors, schema.PALETTE.image_extract.method);
               setValue('PALETTE.image_extract.extracted', extracted);
-            }}
+
+              if (schema.PALETTE.image_extract.enabled) {
+                applyGeneratedAsRiso(extracted.map((x) => x.hex));
+                setValue('PALETTE.lock_palette', true);
+              }
+}}
           />
           <div className="chip-row">
             {schema.PALETTE.image_extract.extracted.map((sw, i) => (

@@ -7,8 +7,9 @@ import { buildEnabledOnlySchema } from '../../state/exports';
 export function LivePromptPanel() {
   const prompt = useOracleStore((s) => s.prompt);
   const schema = useOracleStore((s) => s.schema);
+  const warnings = useOracleStore((s) => s.warnings);
   const importSchema = useOracleStore((s) => s.importSchema);
-  const debugSections = compilePromptV2(schema).debugSections;
+  const debugSections = schema.PROMPT_MANAGER?.enabled ? [] : compilePromptV2(schema).debugSections;
 
   return (
     <Panel>
@@ -41,6 +42,18 @@ export function LivePromptPanel() {
       </div>
 
       <pre>{prompt}</pre>
+
+      {warnings.length > 0 && (
+        <>
+          <h4>Warnings</h4>
+          <ul>
+            {warnings.slice(0, 10).map((w) => (
+              <li key={w}>⚠ {w}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
       <h4>Debug Sections</h4>
       <ul>
         {debugSections.map((d) => (

@@ -21,6 +21,10 @@ export function buildEnabledOnlySchema(schema: SchemaV2): Record<string, unknown
     }
   }
   out.MODULES = modules;
+
+  // Prompt Manager is not part of module toggles; export it if present.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((schema as any).PROMPT_MANAGER) (out as any).PROMPT_MANAGER = (schema as any).PROMPT_MANAGER;
   return out;
 }
 

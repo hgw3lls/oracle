@@ -1,7 +1,7 @@
 import type { SchemaV2 } from './schemaV2';
 
 export const defaultSchemaV2 = (): SchemaV2 => ({
-  version: 2,
+  version: 3,
   MODULES: {
     INPUT: true,
     STATE_MAP: true,
@@ -38,7 +38,7 @@ export const defaultSchemaV2 = (): SchemaV2 => ({
     depth: 65,
   },
   PROMPT_GENOME: {
-    prefix: 'HYPNAGNOSIS ORACLE V2',
+    prefix: 'HYPNAGNOSIS ORACLE V3',
     structure: 'single subject, 3-part spatial read, one focal rupture',
     perception: 'parallax drift, peripheral noise, tactile depth cues',
     style_tokens: ['brutalist', 'high-contrast', 'film-grain'],
@@ -106,5 +106,48 @@ export const defaultSchemaV2 = (): SchemaV2 => ({
       { t: 0, curves: { 'HALLUCINATION.drift': 20, 'PALETTE.color_wheel.rotate_deg': 0 }, state: 'cold-open' },
       { t: 1, curves: { 'HALLUCINATION.drift': 70, 'PALETTE.color_wheel.rotate_deg': 180 }, state: 'crescendo' },
     ],
+  },
+  PROMPT_MANAGER: {
+    enabled: true,
+    active_prompt_id: 'prompt-001',
+    compile_mode: 'BALANCED',
+    style_packs: [
+      { id: 'sp-newriso', name: 'Newriso', tags: ['riso', 'limited-palette', 'misregistration'], snippet: 'Style tokens: Newriso; limited palette, flat ink fields, visible overprint overlaps, slight misregistration, no gradients.', created_at: Date.now() },
+      { id: 'sp-blkout', name: 'blkout-style', tags: ['erasure', 'blackout', 'found-text'], snippet: 'Found page substrate, heavy blackout/redaction, gestural marks, selective word isolation, high-contrast monochrome with occasional limited color fields.', created_at: Date.now() },
+    ],
+    templates: [
+      {
+        id: 'tpl-portrait-diagram',
+        name: 'Portrait Occult Diagram',
+        description: 'Portrait frame, diagrammatic, asymmetrical, riso plates.',
+        tags: ['portrait', 'diagram', 'riso'],
+        created_at: Date.now(),
+        blocks: [
+          { id: 'b-core', kind: 'CORE', enabled: true, content: 'Perception physics: astral projection weird totem of unreal figures; parallax drift, peripheral noise, tactile depth cues; matrix(memory/symbol) depth=65.' },
+          { id: 'b-process', kind: 'PROCESS', enabled: true, content: 'Actions: trace hesitant hand-drawn contours and corrections; graft torn collage seams and fracture edges; overprint riso/gelli/screen textures with plate drift.' },
+          { id: 'b-output', kind: 'OUTPUT_SPEC', enabled: true, content: 'Diagram: portrait frame, normal lens; clean white ground; colors only in the lines; more diagrammatic, less symmetrical.' },
+          { id: 'b-neg', kind: 'NEGATIVES', enabled: true, content: 'Constraints: limited palette, flat ink fields, visible overprint overlaps, slight misregistration, no gradients; avoid cheerful palette.' },
+        ],
+      },
+    ],
+    prompts: [
+      {
+        id: 'prompt-001',
+        name: 'Active Prompt',
+        description: 'Block-based prompt (editable).',
+        tags: ['active'],
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        blocks: [
+          { id: 'p-core', kind: 'CORE', enabled: true, content: 'Subject / intent: Monumental surreal portrait; hypnagogic hallucination physics; drift=45; matrix(memory/symbol) depth=65.' },
+          { id: 'p-style', kind: 'STYLE_PACKS', enabled: true, content: 'Style tokens: brutalist, high-contrast, film-grain. (Optionally apply a style pack.)' },
+          { id: 'p-palette', kind: 'PALETTE_PACK', enabled: true, content: 'Palette: use extracted or locked plates if set; otherwise descriptive graphite/bone white/silver.' },
+          { id: 'p-process', kind: 'PROCESS', enabled: true, content: 'Process: hesitant hand-drawn contours + corrections; torn collage seams; plate drift overprint.' },
+          { id: 'p-constraints', kind: 'CONSTRAINTS', enabled: true, content: 'Constraints: limited palette, flat ink fields, visible overprint overlaps, slight misregistration, no gradients.' },
+          { id: 'p-neg', kind: 'NEGATIVES', enabled: true, content: 'Avoid: cheerful palette, oversaturated colors, cartoon style.' },
+        ],
+      },
+    ],
+    history: [],
   },
 });

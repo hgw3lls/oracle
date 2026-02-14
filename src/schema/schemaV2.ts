@@ -135,8 +135,74 @@ export type AnimationBlock = {
   keyframes: AnimationKeyframe[];
 };
 
-export type SchemaV2 = {
-  version: 2;
+export type PromptCompileMode = 'MINIMAL' | 'BALANCED' | 'MAX_CONTROL';
+
+export type PromptBlockKind =
+  | 'CORE'
+  | 'STYLE_PACKS'
+  | 'PALETTE_PACK'
+  | 'CONSTRAINTS'
+  | 'PROCESS'
+  | 'OUTPUT_SPEC'
+  | 'NEGATIVES';
+
+export type PromptBlock = {
+  id: string;
+  kind: PromptBlockKind;
+  enabled: boolean;
+  content: string;
+};
+
+export type PromptEntity = {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  blocks: PromptBlock[];
+  created_at: number;
+  updated_at: number;
+};
+
+export type PromptSnapshot = {
+  id: string;
+  prompt_id: string;
+  name: string;
+  compiled: string;
+  created_at: number;
+  // A lightweight record of what was compiled (for diff / recall)
+  blocks: PromptBlock[];
+  warnings: string[];
+};
+
+export type StylePack = {
+  id: string;
+  name: string;
+  tags: string[];
+  snippet: string;
+  created_at: number;
+};
+
+export type TemplateEntity = {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  blocks: PromptBlock[];
+  created_at: number;
+};
+
+export type PromptManagerBlock = {
+  enabled: boolean;
+  active_prompt_id: string;
+  compile_mode: PromptCompileMode;
+  prompts: PromptEntity[];
+  templates: TemplateEntity[];
+  style_packs: StylePack[];
+  history: PromptSnapshot[];
+};
+
+export type SchemaV3 = {
+  version: 3;
   MODULES: ModulesBlock;
   IGNORE_RULES: IgnoreRules;
   INPUT: InputBlock;
@@ -149,4 +215,8 @@ export type SchemaV2 = {
   PALETTE: PaletteBlock;
   CONSTRAINTS: ConstraintsBlock;
   ANIMATION: AnimationBlock;
+  PROMPT_MANAGER: PromptManagerBlock;
 };
+
+// Back-compat alias (most of the app can treat SchemaV3 as the schema type)
+export type SchemaV2 = SchemaV3;
