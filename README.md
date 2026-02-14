@@ -74,3 +74,21 @@ npm run preview
 ```bash
 npm run test
 ```
+## Project structure (refactor)
+
+- `src/app/` – app entry + root component
+- `src/core/` – state, schema, prompt engines (pure logic)
+- `src/features/` – user-facing screens/panels (Wizard, Manager, Live, etc.)
+- `src/shared/` – reusable UI/layout, styles, and utilities
+- `src/test/` – test setup
+
+### Path aliases
+
+Use `@/` for imports from `src/` (configured in `tsconfig.json` + `vite.config.js`).
+
+Example:
+
+```ts
+import { useOracleStore } from '@/core/state/store';
+import { Shell } from '@/shared/layout/Shell';
+```

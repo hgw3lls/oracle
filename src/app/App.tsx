@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { Shell } from '../ui/layout/Shell';
-import { useOracleStore } from '../state/store';
-import { clearState, loadState, saveState, STORAGE_VERSION, type StoredStateV1 } from '../state/persistence';
-import { migrateToV2 } from '../schema/migrate';
-import { isSchemaV2 } from '../schema/validate';
+import { Shell } from '@/shared/layout/Shell';
+import { useOracleStore } from '@/core/state/store';
+import { clearState, loadState, saveState, STORAGE_VERSION, type StoredStateV1 } from '@/core/state/persistence';
+import { migrateToV2 } from '@/core/schema/migrate';
+import { isSchemaV2 } from '@/core/schema/validate';
 
 export default function App() {
   const schema = useOracleStore((s) => s.schema);
