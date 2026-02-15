@@ -71,10 +71,6 @@ export type FormState = {
   startH: string;
   endH: string;
   paletteLock: string;
-  medium: string;
-  aspectRatio: string;
-  qualityHint: string;
-  negativePrompt: string;
   arcaneEnabled: boolean;
   sleepEnabled: boolean;
   colorEnabled: boolean;
@@ -107,10 +103,6 @@ export const defaultFormState = (): FormState => ({
   startH: '',
   endH: '',
   paletteLock: '',
-  medium: 'mixed media ink + graphite',
-  aspectRatio: '1:1',
-  qualityHint: 'high detail, tactile marks, physical media feel',
-  negativePrompt: 'sterile vector sheen, glossy CGI surfaces, over-clean geometry',
   arcaneEnabled: true,
   sleepEnabled: true,
   colorEnabled: true,
@@ -176,11 +168,6 @@ function compilePrompt(parts: Record<string, unknown>, mode: FormState['exportMo
     parts.paletteLock ? `AUTO-COLOR\npalette-lock: ${parts.paletteLock}` : '',
     parts.vibeDescription ? `VIBE-REFERENCE\nvibe-description: ${parts.vibeDescription}` : '',
     parts.vibeImageList ? `vibe-images-to-attach: ${parts.vibeImageList}` : '',
-    `IMAGE-GEN
-medium: ${parts.medium}
-aspect-ratio: ${parts.aspectRatio}
-quality-hint: ${parts.qualityHint}
-negative: ${parts.negativePrompt}` ,
     parts.notes ? `notes: ${parts.notes}` : '',
   ].filter(Boolean).join('\n\n');
 
@@ -224,10 +211,6 @@ export function generateSeries(form: FormState, lexicon: Record<string, unknown>
       paletteLock: form.paletteLock,
       vibeDescription: form.vibeDescription,
       vibeImageList: form.vibeImageList,
-      medium: form.medium,
-      aspectRatio: form.aspectRatio,
-      qualityHint: form.qualityHint,
-      negativePrompt: form.negativePrompt,
       notes: [form.notes, symbols ? `symbol-lexicon-injection: ${symbols}` : ''].filter(Boolean).join('\n'),
     }, form.exportMode);
 
