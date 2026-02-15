@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-describe('Hypnagnosis Oracle v2 shell', () => {
-  it('renders shell title and tabs', () => {
+describe('HYPNAGNOSIS app shell', () => {
+  it('renders modern layout controls', () => {
     render(<App />);
-    expect(screen.getByText('Hypnagnosis Oracle v2')).toBeInTheDocument();
-    expect(screen.getByText('WIZARD')).toBeInTheDocument();
-    expect(screen.getByText('LIVE')).toBeInTheDocument();
-    expect(screen.getByText('FRAMES')).toBeInTheDocument();
-    expect(screen.getByText('PRESETS')).toBeInTheDocument();
+    expect(screen.getByText('HYPNAGNOSIS Prompt Builder')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Series' })).toBeInTheDocument();
+    expect(screen.getByText('Output')).toBeInTheDocument();
   });
 });
