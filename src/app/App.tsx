@@ -8,7 +8,26 @@ import {
   type FormState,
   type GeneratedState,
 } from './hypnaEngine';
+import { extractPaletteFromImage } from './paletteExtract';
 import './app.css';
+
+const STYLE_TEMPLATES = [
+  {
+    label: 'Hypnagogic Print',
+    styleTokens: 'STYLE.HYPNAGOGIC, STYLE.PRINT, high-contrast ink',
+    notes: 'Favor limited inks, overprint, and visible plate drift.',
+  },
+  {
+    label: 'Occult Diagram',
+    styleTokens: 'STYLE.OCCULT, STYLE.CONSPIRACY_DIAGRAM, monochrome diagrammatics',
+    notes: 'Push sigils, annotation lines, and ritual map logic.',
+  },
+  {
+    label: 'Graphic Score',
+    styleTokens: 'STYLE.GRAPHIC_SCORE, STYLE.NEWWEIRD, tactile mark-making',
+    notes: 'Treat composition like a performable visual score with temporal cues.',
+  },
+];
 
 export default function App() {
   const [form, setForm] = useState<FormState>(defaultFormState);
@@ -17,8 +36,10 @@ export default function App() {
   const [status, setStatus] = useState('Ready.');
   const [dark, setDark] = useState(true);
   const [lexicon, setLexicon] = useState<Record<string, unknown>>({});
-  const [showGraph, setShowGraph] = useState(false);
+  const [selectedStyleTemplate, setSelectedStyleTemplate] = useState(STYLE_TEMPLATES[0].label);
+  const [isExtractingPalette, setIsExtractingPalette] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const paletteImageInputRef = useRef<HTMLInputElement>(null);
 
   const panelClass = dark ? 'app dark' : 'app light';
 
@@ -49,16 +70,10 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   };
 
-  const graphData = useMemo(() => {
-    if (!series.length) return '';
-    const maxX = Math.max(...series.map((s) => s.index));
-    const toPoint = (x: number, y: number) => `${(x / maxX) * 560 + 20},${320 - y * 2.8}`;
-    return {
-      h: series.map((s) => toPoint(s.index, s.hallucination)).join(' '),
-      c: series.map((s) => toPoint(s.index, s.coherence)).join(' '),
-      r: series.map((s) => toPoint(s.index, s.recursion)).join(' '),
-    };
-  }, [series]);
+  const palettePreview = useMemo(
+    () => form.paletteLock.split(',').map((c) => c.trim()).filter(Boolean),
+    [form.paletteLock],
+  );
 
   const loadLexicon = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,6 +81,30 @@ export default function App() {
     const json = JSON.parse(await file.text()) as Record<string, unknown>;
     setLexicon(json);
     setStatus(`Loaded lexicon: ${Object.keys(json).length} entries.`);
+  };
+
+  const applyStyleTemplate = () => {
+    const template = STYLE_TEMPLATES.find((t) => t.label === selectedStyleTemplate);
+    if (!template) return;
+    setForm((f) => ({ ...f, styleTokens: template.styleTokens, notes: template.notes }));
+    setStatus(`Applied style template: ${template.label}.`);
+  };
+
+  const handlePaletteImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsExtractingPalette(true);
+      const colors = await extractPaletteFromImage(file, 5);
+      update('paletteLock', colors.join(', '));
+      setStatus(`Extracted ${colors.length} colors from ${file.name}.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Palette extraction failed.');
+    } finally {
+      setIsExtractingPalette(false);
+      e.target.value = '';
+    }
   };
 
   return (
@@ -88,7 +127,8 @@ export default function App() {
           <button onClick={() => fileInputRef.current?.click()}>Load Lexicon</button>
           <input ref={fileInputRef} type="file" hidden accept="application/json" onChange={loadLexicon} />
           <button onClick={() => saveText('boot_system_prompts.txt', `${BOOTLOADER_TEXT}\n\n${SYSTEM_FILE_TEXT}\n\n${output}`)}>Export Boot+System</button>
-          <button onClick={() => setShowGraph(true)}>View Evolution Graph</button>
+          <button onClick={() => paletteImageInputRef.current?.click()} disabled={isExtractingPalette}>{isExtractingPalette ? 'Extracting palette…' : 'Upload Palette Image'}</button>
+          <input ref={paletteImageInputRef} type="file" hidden accept="image/*" onChange={handlePaletteImageUpload} />
         </aside>
 
         <section className="content">
@@ -97,6 +137,14 @@ export default function App() {
             <label>Mode<select value={form.mode} onChange={(e) => update('mode', e.target.value as FormState['mode'])}><option>FULL</option><option>STYLE</option><option>GESTURE</option><option>PRINT</option><option>LIVE</option></select></label>
             <label>Subject<input value={form.subject} onChange={(e) => update('subject', e.target.value)} /></label>
             <label>Style tokens<input value={form.styleTokens} onChange={(e) => update('styleTokens', e.target.value)} /></label>
+            <label>Style template
+              <div className="inline-group">
+                <select value={selectedStyleTemplate} onChange={(e) => setSelectedStyleTemplate(e.target.value)}>
+                  {STYLE_TEMPLATES.map((template) => <option key={template.label}>{template.label}</option>)}
+                </select>
+                <button type="button" onClick={applyStyleTemplate}>Apply Template</button>
+              </div>
+            </label>
             <label>Export mode<select value={form.exportMode} onChange={(e) => update('exportMode', e.target.value as FormState['exportMode'])}><option>FULL</option><option>COMPACT</option><option>RAW</option><option>IMAGE</option></select></label>
           </div>
 
@@ -123,6 +171,11 @@ export default function App() {
               <label><input type="checkbox" checked={form.platesEnabled} onChange={(e) => update('platesEnabled', e.target.checked)} /> Plates</label>
             </div>
             <label>Palette lock<input value={form.paletteLock} onChange={(e) => update('paletteLock', e.target.value)} placeholder="#ff0000, #00ff00" /></label>
+            {!!palettePreview.length && (
+              <div className="palette-preview" aria-label="Palette preview">
+                {palettePreview.map((color) => <span key={color} style={{ background: color }} title={color} />)}
+              </div>
+            )}
             <label>Painting influence<input value={form.paintingInfluence} onChange={(e) => update('paintingInfluence', e.target.value)} /></label>
             <label>Humanizer level<input value={form.humanizerLevel} onChange={(e) => update('humanizerLevel', e.target.value)} /></label>
             <label>Notes<textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} /></label>
@@ -146,21 +199,6 @@ export default function App() {
         </section>
       </main>
       <footer className="status">{status}</footer>
-
-      {showGraph && (
-        <div className="modal" onClick={() => setShowGraph(false)}>
-          <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>Evolution Graph</h3>
-            {!series.length ? <p>Generate series first.</p> : (
-              <svg viewBox="0 0 600 340">
-                <polyline points={graphData.h} fill="none" stroke="#4f7cff" strokeWidth="3" />
-                <polyline points={graphData.c} fill="none" stroke="#12b981" strokeWidth="3" />
-                <polyline points={graphData.r} fill="none" stroke="#f97316" strokeWidth="3" />
-              </svg>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
