@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  buildImagePromptFrame,
   buildMasterPrompt,
   buildPlatePrompts,
   buildVariantMatrix,
@@ -102,6 +103,7 @@ const loadGraphicModeState = () => {
   if (!raw) return defaultState;
   const parsed = safeParse(raw);
   if (!parsed || typeof parsed !== 'object') return defaultState;
+
   return {
     ...defaultState,
     ...parsed,
@@ -109,31 +111,39 @@ const loadGraphicModeState = () => {
   };
 };
 
+const toSheetText = (items) => items.map((item) => `=== ${item.label} ===\n${item.prompt || ''}`).join('\n\n');
+
+function buildGraphicOutputs(form) {
+  const spec = deriveSpec(form);
+  const enabledModules = collectEnabledModules(form.modules);
+  const masterPrompt = buildMasterPrompt(spec, form.modules);
+  const imagePromptFrame = buildImagePromptFrame(spec, form.modules);
+  const platePrompts = buildPlatePrompts(spec, form.modules);
+  const variantMatrix = buildVariantMatrix(spec, form.modules);
+
+  return {
+    spec,
+    enabledModules,
+    masterPrompt,
+    imagePromptFrame,
+    platePrompts,
+    variantMatrix,
+    plateTextOutput: toSheetText(platePrompts),
+    variantTextOutput: toSheetText(variantMatrix),
+  };
+}
+
 export default function GraphicNotationApp() {
   const [form, setForm] = useState(() => loadGraphicModeState());
   const [newModule, setNewModule] = useState(emptyCustomModule);
+  const [status, setStatus] = useState('Ready. Generate graphic prompts.');
+  const [outputs, setOutputs] = useState(() => buildGraphicOutputs(loadGraphicModeState()));
   const customIdRef = useRef(1);
 
   useEffect(() => {
     if (!canUseStorage()) return;
     window.localStorage.setItem(GRAPHIC_STATE_STORAGE_KEY, JSON.stringify(form));
   }, [form]);
-
-  const spec = useMemo(() => deriveSpec(form), [form]);
-  const enabledModules = useMemo(() => collectEnabledModules(form.modules), [form.modules]);
-  const masterPrompt = useMemo(() => buildMasterPrompt(spec, form.modules), [spec, form.modules]);
-  const platePrompts = useMemo(() => buildPlatePrompts(spec, form.modules), [spec, form.modules]);
-  const variantMatrix = useMemo(() => buildVariantMatrix(spec, form.modules), [spec, form.modules]);
-
-  const plateTextOutput = useMemo(
-    () => platePrompts.map((plate) => `=== ${plate.label} ===\n${plate.prompt || ''}`).join('\n\n'),
-    [platePrompts],
-  );
-
-  const variantTextOutput = useMemo(
-    () => variantMatrix.map((variant) => `=== ${variant.label} ===\n${variant.prompt || ''}`).join('\n\n'),
-    [variantMatrix],
-  );
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -148,6 +158,12 @@ export default function GraphicNotationApp() {
     const current = Array.isArray(targets) ? targets : [];
     if (checked) return Array.from(new Set([...current, target]));
     return current.filter((item) => item !== target);
+  };
+
+  const generateGraphicPrompts = () => {
+    const next = buildGraphicOutputs(form);
+    setOutputs(next);
+    setStatus(`Generated graphic prompts (${next.platePrompts.length} plates / ${next.variantMatrix.length} variants).`);
   };
 
   const addCustomModule = () => {
@@ -179,6 +195,7 @@ export default function GraphicNotationApp() {
     }));
 
     setNewModule(emptyCustomModule);
+    setStatus(`Added custom module: ${name}. Regenerate to include it in outputs.`);
   };
 
   const deleteCustomModule = (moduleId) => {
@@ -186,6 +203,7 @@ export default function GraphicNotationApp() {
       ...prev,
       modules: (prev.modules || []).filter((module) => module.id !== moduleId),
     }));
+    setStatus('Removed custom module. Regenerate to refresh outputs.');
   };
 
   const loadGraphicPreset = (params) => {
@@ -195,19 +213,33 @@ export default function GraphicNotationApp() {
       ...params,
       modules: Array.isArray(params.modules) ? params.modules : prev.modules,
     }));
+    setStatus('Graphic preset loaded. Generate to refresh outputs.');
   };
 
   const resetGraphicModeState = () => {
     if (canUseStorage()) window.localStorage.removeItem(GRAPHIC_STATE_STORAGE_KEY);
     setForm(defaultState);
     setNewModule(emptyCustomModule);
+    const resetOutputs = buildGraphicOutputs(defaultState);
+    setOutputs(resetOutputs);
+    setStatus('Graphic notation state reset to defaults.');
   };
+
+  const derivedJson = useMemo(
+    () => ({ ...outputs.spec, enabledModules: outputs.enabledModules }),
+    [outputs.spec, outputs.enabledModules],
+  );
 
   return (
     <div className="graphic-notation-app">
       <header className="graphic-notation-header">
         <h2>Graphic Notation PromptGen</h2>
-        <p>Build master + plate prompts for performable visual score generation.</p>
+        <p>Dedicated generator for performable visual score image prompts (independent from Oracle mode).</p>
+        <div className="actions">
+          <button type="button" onClick={generateGraphicPrompts}>Generate Graphic Prompts</button>
+          <button type="button" onClick={resetGraphicModeState}>Reset mode state</button>
+        </div>
+        <p>{status}</p>
       </header>
 
       <main className="graphic-notation-grid">
@@ -227,12 +259,11 @@ export default function GraphicNotationApp() {
           <label>Palette<input value={form.palette} onChange={(event) => update('palette', event.target.value)} /></label>
           <label>Gesture vocabulary (comma-separated)<textarea value={form.gestures} onChange={(event) => update('gestures', event.target.value)} /></label>
           <label>Constraints<textarea value={form.constraints} onChange={(event) => update('constraints', event.target.value)} /></label>
-          <button type="button" onClick={resetGraphicModeState}>Reset mode state</button>
         </section>
 
         <section className="graphic-notation-card">
           <h3>Modules</h3>
-          <p>Enabled modules inject prompt blocks and mutate variant matrix output.</p>
+          <p>Enable/disable module influence for this mode only. Changes apply after Generate.</p>
           <div className="graphic-module-list">
             {(form.modules || []).map((module) => (
               <article key={module.id} className="graphic-module-item">
@@ -344,19 +375,23 @@ export default function GraphicNotationApp() {
 
         <section className="graphic-notation-card">
           <h3>Derived Spec</h3>
-          <pre>{JSON.stringify({ ...spec, enabledModules }, null, 2)}</pre>
+          <pre>{JSON.stringify(derivedJson, null, 2)}</pre>
         </section>
 
         <section className="graphic-notation-card">
-          <OutputPanel title="Master Prompt" textOutput={masterPrompt || ''} jsonOutput={{ spec, enabledModules }} />
+          <OutputPanel title="Master Prompt" textOutput={outputs.masterPrompt || ''} jsonOutput={derivedJson} />
         </section>
 
         <section className="graphic-notation-card">
-          <OutputPanel title="Variant Matrix" textOutput={variantTextOutput || ''} jsonOutput={variantMatrix} />
+          <OutputPanel title="Image Prompt Frame" textOutput={outputs.imagePromptFrame || ''} jsonOutput={derivedJson} />
         </section>
 
         <section className="graphic-notation-card">
-          <OutputPanel title="Plate Prompts" textOutput={plateTextOutput || ''} jsonOutput={platePrompts} />
+          <OutputPanel title="Variant Matrix" textOutput={outputs.variantTextOutput || ''} jsonOutput={outputs.variantMatrix} />
+        </section>
+
+        <section className="graphic-notation-card">
+          <OutputPanel title="Plate Prompts" textOutput={outputs.plateTextOutput || ''} jsonOutput={outputs.platePrompts} />
         </section>
       </main>
     </div>
