@@ -9,6 +9,7 @@ import {
   type GeneratedState,
 } from './hypnaEngine';
 import { extractPaletteFromImage } from './paletteExtract';
+import GraphicNotationApp from '../graphic-notation/GraphicNotationApp';
 import './app.css';
 
 const ORACLE_STYLE_TEMPLATES = [
@@ -60,15 +61,6 @@ function AppShell() {
           <GraphicNotationApp />
         </section>
       </div>
-    </div>
-  );
-}
-
-function GraphicNotationApp() {
-  return (
-    <div className="graphic-notation-placeholder">
-      <h2>Graphic Notation</h2>
-      <p>Graphic Notation builder (coming online)</p>
     </div>
   );
 }

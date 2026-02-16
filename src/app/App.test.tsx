@@ -20,7 +20,7 @@ describe('HYPNAGNOSIS app shell', () => {
     fireEvent.change(subject, { target: { value: 'Persistent Oracle Subject' } });
 
     fireEvent.click(screen.getAllByRole('tab', { name: 'Graphic Notation' })[0]);
-    expect(screen.getAllByText('Graphic Notation builder (coming online)')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Graphic Notation PromptGen')[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('tab', { name: 'Oracle' })[0]);
     const visibleOracleSection = document.querySelector('section[aria-hidden="false"]') as HTMLElement;
