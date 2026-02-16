@@ -16,6 +16,7 @@ export function LivePromptPanel() {
       <h3>Compiled Prompt</h3>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button type="button" onClick={() => navigator.clipboard.writeText(prompt)}>Copy image prompt</button>
         <button type="button" onClick={() => downloadText('compiled_prompt.txt', prompt)}>Export compiled prompt (.txt)</button>
         <button type="button" onClick={() => downloadJson('schema.json', schema)}>Export schema JSON</button>
         <button type="button" onClick={() => downloadJson('schema_enabled_only.json', buildEnabledOnlySchema(schema))}>Export enabled-only schema JSON</button>
@@ -40,6 +41,10 @@ export function LivePromptPanel() {
           />
         </label>
       </div>
+
+      <p style={{ marginTop: 0, opacity: 0.8, fontSize: 12 }}>
+        Copy and paste this prompt directly into ChatGPT or your preferred image generator.
+      </p>
 
       <pre>{prompt}</pre>
 
