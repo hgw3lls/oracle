@@ -1,17 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App';
 
 describe('HYPNAGNOSIS app shell', () => {
-  it('renders modern layout controls', () => {
+  it('renders mode switch and Oracle by default', () => {
     render(<App />);
-    expect(screen.getByText('HYPNAGNOSIS Prompt Builder')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Oracle' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Graphic Notation PromptGen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Series' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Upload Palette Image' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Apply Template' })).toBeInTheDocument();
-    expect(screen.getByText('Output')).toBeInTheDocument();
+    expect(screen.getAllByText('Mode Switch')[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('tab', { name: 'Oracle' })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('tab', { name: 'Graphic Notation' })[0]).toBeInTheDocument();
+    expect(screen.getAllByText('HYPNAGNOSIS Prompt Builder')[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Generate' })[0]).toBeInTheDocument();
+  });
+
+  it('keeps Oracle state when switching modes', () => {
+    render(<App />);
+
+    const oracleSection = document.querySelector('section[aria-hidden="false"]') as HTMLElement;
+    const subject = within(oracleSection).getByLabelText('Subject') as HTMLInputElement;
+    fireEvent.change(subject, { target: { value: 'Persistent Oracle Subject' } });
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Graphic Notation' })[0]);
+    expect(screen.getAllByText('Graphic Notation builder (coming online)')[0]).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Oracle' })[0]);
+    const visibleOracleSection = document.querySelector('section[aria-hidden="false"]') as HTMLElement;
+    expect(within(visibleOracleSection).getByLabelText('Subject')).toHaveValue('Persistent Oracle Subject');
   });
 });

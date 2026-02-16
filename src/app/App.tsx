@@ -11,124 +11,97 @@ import {
 import { extractPaletteFromImage } from './paletteExtract';
 import './app.css';
 
-const BUILDERS = {
-  oracle: {
-    label: 'Oracle',
-    title: 'HYPNAGNOSIS Prompt Builder',
-    subtitle: 'blank=autofill · SKIP=omit · NONE=disable',
-    styleTemplates: [
-      {
-        label: 'Hypnagogic Print',
-        styleTokens: 'STYLE.HYPNAGOGIC, STYLE.PRINT, high-contrast ink',
-        notes: 'Favor limited inks, overprint, and visible plate drift.',
-      },
-      {
-        label: 'Occult Diagram',
-        styleTokens: 'STYLE.OCCULT, STYLE.CONSPIRACY_DIAGRAM, monochrome diagrammatics',
-        notes: 'Push sigils, annotation lines, and ritual map logic.',
-      },
-      {
-        label: 'Graphic Score',
-        styleTokens: 'STYLE.GRAPHIC_SCORE, STYLE.NEWWEIRD, tactile mark-making',
-        notes: 'Treat composition like a performable visual score with temporal cues.',
-      },
-    ],
+const ORACLE_STYLE_TEMPLATES = [
+  {
+    label: 'Hypnagogic Print',
+    styleTokens: 'STYLE.HYPNAGOGIC, STYLE.PRINT, high-contrast ink',
+    notes: 'Favor limited inks, overprint, and visible plate drift.',
   },
-  graphicNotation: {
-    label: 'Graphic Notation PromptGen',
-    title: 'Graphic Notation PromptGen',
-    subtitle: 'notation-first visual scoring · preserves independent state',
-    styleTemplates: [
-      {
-        label: 'Graphic Staff',
-        styleTokens: 'STYLE.GRAPHIC_SCORE, notation staves, measured intervals',
-        notes: 'Compose forms as staves, bars, accents, and timing marks.',
-      },
-      {
-        label: 'Gesture Cue Sheet',
-        styleTokens: 'gesture glyphs, cue marks, kinetic line pressure',
-        notes: 'Use directional arrows and dynamic intensity markers.',
-      },
-      {
-        label: 'Diagram Pulse',
-        styleTokens: 'diagrammatics, pulse clusters, symbol cadence',
-        notes: 'Layer symbol repetition to imply tempo and visual rhythm.',
-      },
-    ],
+  {
+    label: 'Occult Diagram',
+    styleTokens: 'STYLE.OCCULT, STYLE.CONSPIRACY_DIAGRAM, monochrome diagrammatics',
+    notes: 'Push sigils, annotation lines, and ritual map logic.',
   },
-} as const;
+  {
+    label: 'Graphic Score',
+    styleTokens: 'STYLE.GRAPHIC_SCORE, STYLE.NEWWEIRD, tactile mark-making',
+    notes: 'Treat composition like a performable visual score with temporal cues.',
+  },
+];
 
-type BuilderMode = keyof typeof BUILDERS;
-
-type BuilderState = {
-  form: FormState;
-  series: GeneratedState[];
-  output: string;
-  status: string;
-  lexicon: Record<string, unknown>;
-  selectedStyleTemplate: string;
-};
-
-const createInitialBuilderState = (mode: BuilderMode): BuilderState => ({
-  form: defaultFormState(),
-  series: [],
-  output: 'Ready. Click Generate.',
-  status: 'Ready.',
-  lexicon: {},
-  selectedStyleTemplate: BUILDERS[mode].styleTemplates[0].label,
-});
+type BuilderMode = 'oracle' | 'graphicNotation';
 
 export default function App() {
-  const [activeBuilder, setActiveBuilder] = useState<BuilderMode>('oracle');
-  const [builderStates, setBuilderStates] = useState<Record<BuilderMode, BuilderState>>({
-    oracle: createInitialBuilderState('oracle'),
-    graphicNotation: createInitialBuilderState('graphicNotation'),
-  });
+  return <AppShell />;
+}
+
+function AppShell() {
+  const [mode, setMode] = useState<BuilderMode>('oracle');
+
+  return (
+    <div className="app-shell">
+      <header className="mode-shell-header">
+        <h1>Mode Switch</h1>
+        <div className="mode-toggle" role="tablist" aria-label="Prompt builder mode switch">
+          <button type="button" role="tab" aria-selected={mode === 'oracle'} className={mode === 'oracle' ? 'active' : ''} onClick={() => setMode('oracle')}>
+            Oracle
+          </button>
+          <button type="button" role="tab" aria-selected={mode === 'graphicNotation'} className={mode === 'graphicNotation' ? 'active' : ''} onClick={() => setMode('graphicNotation')}>
+            Graphic Notation
+          </button>
+        </div>
+      </header>
+
+      <div className="mode-shell-content">
+        <section hidden={mode !== 'oracle'} aria-hidden={mode !== 'oracle'}>
+          <OracleApp />
+        </section>
+        <section hidden={mode !== 'graphicNotation'} aria-hidden={mode !== 'graphicNotation'}>
+          <GraphicNotationApp />
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function GraphicNotationApp() {
+  return (
+    <div className="graphic-notation-placeholder">
+      <h2>Graphic Notation</h2>
+      <p>Graphic Notation builder (coming online)</p>
+    </div>
+  );
+}
+
+function OracleApp() {
+  const [form, setForm] = useState<FormState>(defaultFormState());
+  const [series, setSeries] = useState<GeneratedState[]>([]);
+  const [output, setOutput] = useState('Ready. Click Generate.');
+  const [status, setStatus] = useState('Ready.');
   const [dark, setDark] = useState(true);
+  const [lexicon, setLexicon] = useState<Record<string, unknown>>({});
+  const [selectedStyleTemplate, setSelectedStyleTemplate] = useState(ORACLE_STYLE_TEMPLATES[0].label);
   const [isExtractingPalette, setIsExtractingPalette] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paletteImageInputRef = useRef<HTMLInputElement>(null);
 
-  const activeState = builderStates[activeBuilder];
-  const { form, output, status, lexicon, selectedStyleTemplate } = activeState;
-  const templates = BUILDERS[activeBuilder].styleTemplates;
-
   const panelClass = dark ? 'app dark' : 'app light';
 
-  const updateBuilderState = (updater: (state: BuilderState) => BuilderState, mode = activeBuilder) => {
-    setBuilderStates((previous) => ({
-      ...previous,
-      [mode]: updater(previous[mode]),
-    }));
-  };
-
-  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    updateBuilderState((state) => ({ ...state, form: { ...state.form, [key]: value } }));
-  };
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const runGenerate = (asSeries: boolean) => {
     try {
       const next = generateSeries(form, lexicon);
+      setSeries(next);
       if (asSeries) {
-        updateBuilderState((state) => ({
-          ...state,
-          series: next,
-          output: next.map((s) => `=== STATE ${s.index} ===\n${s.prompt}`).join('\n\n'),
-          status: `Generated ${next.length} states.`,
-        }));
+        setOutput(next.map((s) => `=== STATE ${s.index} ===\n${s.prompt}`).join('\n\n'));
+        setStatus(`Generated ${next.length} states.`);
       } else {
-        updateBuilderState((state) => ({
-          ...state,
-          series: next,
-          output: next[0]?.prompt ?? '',
-          status: 'Generated 1 prompt.',
-        }));
+        setOutput(next[0]?.prompt ?? '');
+        setStatus('Generated 1 prompt.');
       }
     } catch (error) {
-      updateBuilderState((state) => ({
-        ...state,
-        status: error instanceof Error ? error.message : 'Generation failed',
-      }));
+      setStatus(error instanceof Error ? error.message : 'Generation failed');
     }
   };
 
@@ -147,54 +120,31 @@ export default function App() {
   );
 
   const loadLexicon = async (e: ChangeEvent<HTMLInputElement>) => {
-    const mode = activeBuilder;
     const file = e.target.files?.[0];
     if (!file) return;
     const json = JSON.parse(await file.text()) as Record<string, unknown>;
-    updateBuilderState(
-      (state) => ({
-        ...state,
-        lexicon: json,
-        status: `Loaded lexicon: ${Object.keys(json).length} entries.`,
-      }),
-      mode,
-    );
+    setLexicon(json);
+    setStatus(`Loaded lexicon: ${Object.keys(json).length} entries.`);
   };
 
   const applyStyleTemplate = () => {
-    const template = templates.find((t) => t.label === selectedStyleTemplate);
+    const template = ORACLE_STYLE_TEMPLATES.find((t) => t.label === selectedStyleTemplate);
     if (!template) return;
-    updateBuilderState((state) => ({
-      ...state,
-      form: { ...state.form, styleTokens: template.styleTokens, notes: template.notes },
-      status: `Applied style template: ${template.label}.`,
-    }));
+    setForm((f) => ({ ...f, styleTokens: template.styleTokens, notes: template.notes }));
+    setStatus(`Applied style template: ${template.label}.`);
   };
 
   const handlePaletteImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const mode = activeBuilder;
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       setIsExtractingPalette(true);
       const colors = await extractPaletteFromImage(file, 5);
-      updateBuilderState(
-        (state) => ({
-          ...state,
-          form: { ...state.form, paletteLock: colors.join(', ') },
-          status: `Extracted ${colors.length} colors from ${file.name}.`,
-        }),
-        mode,
-      );
+      update('paletteLock', colors.join(', '));
+      setStatus(`Extracted ${colors.length} colors from ${file.name}.`);
     } catch (error) {
-      updateBuilderState(
-        (state) => ({
-          ...state,
-          status: error instanceof Error ? error.message : 'Palette extraction failed.',
-        }),
-        mode,
-      );
+      setStatus(error instanceof Error ? error.message : 'Palette extraction failed.');
     } finally {
       setIsExtractingPalette(false);
       e.target.value = '';
@@ -205,24 +155,10 @@ export default function App() {
     <div className={panelClass}>
       <header className="appbar">
         <div>
-          <h1>{BUILDERS[activeBuilder].title}</h1>
-          <p>{BUILDERS[activeBuilder].subtitle}</p>
+          <h1>HYPNAGNOSIS Prompt Builder</h1>
+          <p>blank=autofill · SKIP=omit · NONE=disable</p>
         </div>
         <div className="actions">
-          <div className="mode-toggle" role="tablist" aria-label="Prompt builder mode">
-            {(Object.keys(BUILDERS) as BuilderMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                role="tab"
-                aria-selected={activeBuilder === mode}
-                className={activeBuilder === mode ? 'active' : ''}
-                onClick={() => setActiveBuilder(mode)}
-              >
-                {BUILDERS[mode].label}
-              </button>
-            ))}
-          </div>
           <label><input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} /> Dark</label>
           <button onClick={() => runGenerate(false)}>Generate</button>
           <button onClick={() => runGenerate(true)}>Series</button>
@@ -247,8 +183,8 @@ export default function App() {
             <label>Style tokens<input value={form.styleTokens} onChange={(e) => update('styleTokens', e.target.value)} /></label>
             <label>Style template
               <div className="inline-group">
-                <select value={selectedStyleTemplate} onChange={(e) => updateBuilderState((state) => ({ ...state, selectedStyleTemplate: e.target.value }))}>
-                  {templates.map((template) => <option key={template.label}>{template.label}</option>)}
+                <select value={selectedStyleTemplate} onChange={(e) => setSelectedStyleTemplate(e.target.value)}>
+                  {ORACLE_STYLE_TEMPLATES.map((template) => <option key={template.label}>{template.label}</option>)}
                 </select>
                 <button type="button" onClick={applyStyleTemplate}>Apply Template</button>
               </div>
@@ -293,7 +229,7 @@ export default function App() {
             <h2>Humanizer Qualities + Symbol Injection</h2>
             <div className="checks">
               {HUMANIZER_QUALITIES.map(([k, label]) => (
-                <label key={k}><input type="checkbox" checked={form.qualities[k]} onChange={(e) => updateBuilderState((state) => ({ ...state, form: { ...state.form, qualities: { ...state.form.qualities, [k]: e.target.checked } } }))} /> {label}</label>
+                <label key={k}><input type="checkbox" checked={form.qualities[k]} onChange={(e) => setForm((f) => ({ ...f, qualities: { ...f.qualities, [k]: e.target.checked } }))} /> {label}</label>
               ))}
             </div>
             <label><input type="checkbox" checked={form.injectSymbols} onChange={(e) => update('injectSymbols', e.target.checked)} /> Inject symbol lexicon</label>
@@ -303,7 +239,7 @@ export default function App() {
 
         <section className="output">
           <h2>Output</h2>
-          <textarea value={output} onChange={(e) => updateBuilderState((state) => ({ ...state, output: e.target.value }))} />
+          <textarea value={output} onChange={(e) => setOutput(e.target.value)} />
         </section>
       </main>
       <footer className="status">{status}</footer>
