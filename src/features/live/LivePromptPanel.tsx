@@ -1,8 +1,30 @@
+import type { CSSProperties } from 'react';
 import { Panel } from '@/shared/layout/Panel';
 import { useOracleStore } from '@/core/state/store';
 import { compilePromptV2 } from '@/core/engine/compilePromptV2';
 import { downloadJson, downloadText } from '@/shared/utils/download';
 import { buildEnabledOnlySchema } from '@/core/state/exports';
+
+const sectionCardStyle: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.16)',
+  borderRadius: 10,
+  padding: 12,
+  display: 'grid',
+  gap: 10,
+};
+
+const actionsRowStyle: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  alignItems: 'center',
+};
+
+const buttonStyle: CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 8,
+  border: '1px solid rgba(255,255,255,0.2)',
+};
 
 export function LivePromptPanel() {
   const prompt = useOracleStore((s) => s.prompt);
@@ -21,25 +43,26 @@ export function LivePromptPanel() {
         <button type="button" onClick={() => downloadJson('schema.json', schema)}>Export schema JSON</button>
         <button type="button" onClick={() => downloadJson('schema_enabled_only.json', buildEnabledOnlySchema(schema))}>Export enabled-only schema JSON</button>
 
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span>Import schema JSON</span>
-          <input
-            type="file"
-            accept="application/json"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              try {
-                const text = await file.text();
-                importSchema(JSON.parse(text));
-              } catch {
-                alert('Could not import JSON file.');
-              } finally {
-                e.target.value = '';
-              }
-            }}
-          />
-        </label>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>Import schema JSON</span>
+            <input
+              type="file"
+              accept="application/json"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  importSchema(JSON.parse(text));
+                } catch {
+                  alert('Could not import JSON file.');
+                } finally {
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
+        </section>
       </div>
 
       <p style={{ marginTop: 0, opacity: 0.8, fontSize: 12 }}>
