@@ -5,68 +5,25 @@ import { compilePromptV2 } from '@/core/engine/compilePromptV2';
 import { downloadJson, downloadText } from '@/shared/utils/download';
 import { buildEnabledOnlySchema } from '@/core/state/exports';
 
-const mixerDeckStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: 12,
-  marginBottom: 14,
-};
-
-const channelStripStyle: CSSProperties = {
-  border: '2px solid #fff',
-  borderRadius: 0,
-  background: '#111',
-  boxShadow: '4px 4px 0 #fff',
+const sectionCardStyle: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.16)',
+  borderRadius: 10,
   padding: 12,
   display: 'grid',
   gap: 10,
-  minHeight: 220,
 };
 
-const stripHeaderStyle: CSSProperties = {
+const actionsRowStyle: CSSProperties = {
   display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'baseline',
-  borderBottom: '1px solid rgba(255,255,255,0.45)',
-  paddingBottom: 6,
-  fontSize: 12,
-  letterSpacing: 0.8,
+  gap: 10,
+  flexWrap: 'wrap',
+  alignItems: 'center',
 };
 
-const ledStyle: CSSProperties = {
-  width: 10,
-  height: 10,
-  borderRadius: '50%',
-  background: '#37ff7e',
-  boxShadow: '0 0 10px #37ff7e',
-};
-
-const channelButtonStyle: CSSProperties = {
-  width: '100%',
-  textAlign: 'left',
-  padding: '8px 10px',
-  border: '2px solid #fff',
-  borderRadius: 0,
-  background: '#000',
-  color: '#fff',
-  fontWeight: 800,
-  letterSpacing: 0.3,
-};
-
-const faderTrackStyle: CSSProperties = {
-  border: '1px solid rgba(255,255,255,0.35)',
-  padding: '8px 10px',
-  display: 'grid',
-  gap: 4,
-};
-
-const promptDisplayStyle: CSSProperties = {
-  border: '2px solid #fff',
-  borderRadius: 0,
-  background: '#000',
-  padding: 12,
-  margin: 0,
-  whiteSpace: 'pre-wrap',
+const buttonStyle: CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 8,
+  border: '1px solid rgba(255,255,255,0.2)',
 };
 
 export function LivePromptPanel() {
@@ -78,54 +35,16 @@ export function LivePromptPanel() {
 
   return (
     <Panel>
-      <h3 style={{ marginBottom: 6 }}>PROMPT MIXER</h3>
-      <p style={{ marginTop: 0, marginBottom: 12, opacity: 0.85, fontSize: 12 }}>
-        Brutalist channel-strip layout: copy/paste your image prompt fast, then route exports from dedicated strips.
-      </p>
+      <h3>Compiled Prompt</h3>
 
-      <div style={mixerDeckStyle}>
-        <section style={channelStripStyle} aria-label="Prompt channel strip">
-          <header style={stripHeaderStyle}>
-            <strong>CH 01 · PROMPT BUS</strong>
-            <span style={ledStyle} aria-hidden="true" />
-          </header>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button type="button" onClick={() => navigator.clipboard.writeText(prompt)}>Copy image prompt</button>
+        <button type="button" onClick={() => downloadText('compiled_prompt.txt', prompt)}>Export compiled prompt (.txt)</button>
+        <button type="button" onClick={() => downloadJson('schema.json', schema)}>Export schema JSON</button>
+        <button type="button" onClick={() => downloadJson('schema_enabled_only.json', buildEnabledOnlySchema(schema))}>Export enabled-only schema JSON</button>
 
-          <button type="button" style={channelButtonStyle} onClick={() => navigator.clipboard.writeText(prompt)}>
-            COPY IMAGE PROMPT
-          </button>
-
-          <button type="button" style={channelButtonStyle} onClick={() => downloadText('compiled_prompt.txt', prompt)}>
-            EXPORT COMPILED PROMPT (.TXT)
-          </button>
-
-          <div style={faderTrackStyle}>
-            <strong style={{ fontSize: 12 }}>OUTPUT NOTE</strong>
-            <span style={{ fontSize: 12, opacity: 0.85 }}>
-              Paste directly into ChatGPT or your preferred image generator prompt box.
-            </span>
-          </div>
-        </section>
-
-        <section style={channelStripStyle} aria-label="Schema channel strip">
-          <header style={stripHeaderStyle}>
-            <strong>CH 02 · SCHEMA BUS</strong>
-            <span style={ledStyle} aria-hidden="true" />
-          </header>
-
-          <button type="button" style={channelButtonStyle} onClick={() => downloadJson('schema.json', schema)}>
-            EXPORT SCHEMA JSON
-          </button>
-
-          <button
-            type="button"
-            style={channelButtonStyle}
-            onClick={() => downloadJson('schema_enabled_only.json', buildEnabledOnlySchema(schema))}
-          >
-            EXPORT ENABLED-ONLY JSON
-          </button>
-
-          <label style={faderTrackStyle}>
-            <strong style={{ fontSize: 12 }}>IMPORT SCHEMA JSON</strong>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>Import schema JSON</span>
             <input
               type="file"
               accept="application/json"
@@ -146,7 +65,11 @@ export function LivePromptPanel() {
         </section>
       </div>
 
-      <pre style={promptDisplayStyle}>{prompt}</pre>
+      <p style={{ marginTop: 0, opacity: 0.8, fontSize: 12 }}>
+        Copy and paste this prompt directly into ChatGPT or your preferred image generator.
+      </p>
+
+      <pre>{prompt}</pre>
 
       {warnings.length > 0 && (
         <>
