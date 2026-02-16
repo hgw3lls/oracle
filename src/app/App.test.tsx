@@ -11,6 +11,7 @@ describe('HYPNAGNOSIS app shell', () => {
     expect(screen.getAllByText('HYPNAGNOSIS Prompt Builder')[0]).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Generate' })[0]).toBeInTheDocument();
     expect(screen.getAllByText('Oracle Output')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Oracle Preset Packs')[0]).toBeInTheDocument();
   });
 
   it('keeps Oracle state when switching modes', () => {
@@ -23,6 +24,7 @@ describe('HYPNAGNOSIS app shell', () => {
     fireEvent.click(screen.getAllByRole('tab', { name: 'Graphic Notation' })[0]);
     expect(screen.getAllByText('Graphic Notation PromptGen')[0]).toBeInTheDocument();
     expect(screen.getAllByText('Master Prompt')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Graphic Notation Preset Packs')[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('tab', { name: 'Oracle' })[0]);
     const visibleOracleSection = document.querySelector('section[aria-hidden="false"]') as HTMLElement;

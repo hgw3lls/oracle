@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { buildMasterPrompt, buildPlatePrompts, deriveSpec } from './promptBuilders';
 import OutputPanel from '../shared/components/OutputPanel';
+import PresetManager from '../shared/components/PresetManager';
 
 const defaultState = {
   title: 'Signal Cartography No. 1',
@@ -26,6 +27,12 @@ export default function GraphicNotationApp() {
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
+  const loadGraphicPreset = (params) => {
+    if (!params || typeof params !== 'object') return;
+    setForm((prev) => ({ ...prev, ...params }));
+  };
+
+
   return (
     <div className="graphic-notation-app">
       <header className="graphic-notation-header">
@@ -50,6 +57,15 @@ export default function GraphicNotationApp() {
           <label>Palette<input value={form.palette} onChange={(event) => update('palette', event.target.value)} /></label>
           <label>Gesture vocabulary (comma-separated)<textarea value={form.gestures} onChange={(event) => update('gestures', event.target.value)} /></label>
           <label>Constraints<textarea value={form.constraints} onChange={(event) => update('constraints', event.target.value)} /></label>
+        </section>
+
+        <section className="graphic-notation-card">
+          <PresetManager
+            title="Graphic Notation Preset Packs"
+            storageKey="graphic:preset_packs"
+            getCurrentParams={() => form}
+            onLoadPreset={loadGraphicPreset}
+          />
         </section>
 
         <section className="graphic-notation-card">

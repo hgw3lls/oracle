@@ -11,6 +11,7 @@ import {
 import { extractPaletteFromImage } from './paletteExtract';
 import GraphicNotationApp from '../graphic-notation/GraphicNotationApp';
 import OutputPanel from '../shared/components/OutputPanel';
+import PresetManager from '../shared/components/PresetManager';
 import './app.css';
 
 const ORACLE_STYLE_TEMPLATES = [
@@ -127,6 +128,22 @@ function OracleApp() {
     setStatus(`Applied style template: ${template.label}.`);
   };
 
+  const loadOraclePreset = (params: Record<string, unknown>) => {
+    const defaults = defaultFormState();
+    const safeParams = params && typeof params === 'object' ? params : {};
+    const incomingQualities =
+      safeParams.qualities && typeof safeParams.qualities === 'object'
+        ? (safeParams.qualities as Record<string, boolean>)
+        : {};
+
+    setForm({
+      ...defaults,
+      ...(safeParams as Partial<FormState>),
+      qualities: { ...defaults.qualities, ...incomingQualities },
+    });
+    setStatus('Loaded preset.');
+  };
+
   const handlePaletteImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -164,6 +181,12 @@ function OracleApp() {
           <button onClick={() => saveText('boot_system_prompts.txt', `${BOOTLOADER_TEXT}\n\n${SYSTEM_FILE_TEXT}\n\n${output}`)}>Export Boot+System</button>
           <button onClick={() => paletteImageInputRef.current?.click()} disabled={isExtractingPalette}>{isExtractingPalette ? 'Extracting palette…' : 'Upload Palette Image'}</button>
           <input ref={paletteImageInputRef} type="file" hidden accept="image/*" onChange={handlePaletteImageUpload} />
+          <PresetManager
+            title="Oracle Preset Packs"
+            storageKey="oracle:preset_packs"
+            getCurrentParams={() => form}
+            onLoadPreset={loadOraclePreset}
+          />
         </aside>
 
         <section className="content">
