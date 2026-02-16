@@ -1,4 +1,4 @@
-import { ChangeEvent, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BOOTLOADER_TEXT,
   HUMANIZER_QUALITIES,
@@ -9,9 +9,16 @@ import {
   type GeneratedState,
 } from './hypnaEngine';
 import { extractPaletteFromImage } from './paletteExtract';
+import GraphicNotationApp from '../graphic-notation/GraphicNotationApp';
+import OutputPanel from '../shared/components/OutputPanel';
+import PresetManager from '../shared/components/PresetManager';
+import ErrorBoundary from '../shared/components/ErrorBoundary';
 import './app.css';
 
-const STYLE_TEMPLATES = [
+const MODE_STORAGE_KEY = 'app:mode';
+const ORACLE_STATE_STORAGE_KEY = 'oracle:mode_state';
+
+const ORACLE_STYLE_TEMPLATES = [
   {
     label: 'Hypnagogic Print',
     styleTokens: 'STYLE.HYPNAGOGIC, STYLE.PRINT, high-contrast ink',
@@ -29,17 +36,108 @@ const STYLE_TEMPLATES = [
   },
 ];
 
+const MODE_META = {
+  oracle: { label: 'Oracle', description: 'original prompt builder' },
+  graphicNotation: { label: 'Graphic Notation', description: 'graphical score prompt builder' },
+};
+
+type BuilderMode = 'oracle' | 'graphicNotation';
+
+const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const safeParse = (value: string) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const loadStoredOracleForm = () => {
+  if (!canUseStorage()) return defaultFormState();
+  const raw = window.localStorage.getItem(ORACLE_STATE_STORAGE_KEY);
+  if (!raw) return defaultFormState();
+  const parsed = safeParse(raw);
+  const defaults = defaultFormState();
+
+  if (!parsed || typeof parsed !== 'object') return defaults;
+  const incoming = parsed as Partial<FormState>;
+
+  return {
+    ...defaults,
+    ...incoming,
+    qualities: {
+      ...defaults.qualities,
+      ...(incoming.qualities && typeof incoming.qualities === 'object' ? incoming.qualities : {}),
+    },
+  };
+};
+
 export default function App() {
-  const [form, setForm] = useState<FormState>(defaultFormState);
+  return <AppShell />;
+}
+
+function AppShell() {
+  const [mode, setMode] = useState<BuilderMode>(() => {
+    if (!canUseStorage()) return 'oracle';
+    const stored = window.localStorage.getItem(MODE_STORAGE_KEY);
+    return stored === 'graphicNotation' ? 'graphicNotation' : 'oracle';
+  });
+
+  useEffect(() => {
+    if (!canUseStorage()) return;
+    window.localStorage.setItem(MODE_STORAGE_KEY, mode);
+  }, [mode]);
+
+  return (
+    <div className="app-shell">
+      <header className="mode-shell-header">
+        <h1>Mode Switch</h1>
+        <div className="mode-toggle" role="tablist" aria-label="Prompt builder mode switch">
+          <button type="button" role="tab" aria-selected={mode === 'oracle'} className={mode === 'oracle' ? 'active' : ''} onClick={() => setMode('oracle')}>
+            Oracle
+          </button>
+          <button type="button" role="tab" aria-selected={mode === 'graphicNotation'} className={mode === 'graphicNotation' ? 'active' : ''} onClick={() => setMode('graphicNotation')}>
+            Graphic Notation
+          </button>
+        </div>
+        <p className="mode-indicator">
+          Mode: <strong>{MODE_META[mode].label}</strong> — {MODE_META[mode].description}
+        </p>
+      </header>
+
+      <div className="mode-shell-content">
+        <section hidden={mode !== 'oracle'} aria-hidden={mode !== 'oracle'}>
+          <ErrorBoundary>
+            <OracleApp />
+          </ErrorBoundary>
+        </section>
+        <section hidden={mode !== 'graphicNotation'} aria-hidden={mode !== 'graphicNotation'}>
+          <ErrorBoundary>
+            <GraphicNotationApp />
+          </ErrorBoundary>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function OracleApp() {
+  const [form, setForm] = useState<FormState>(() => loadStoredOracleForm());
   const [series, setSeries] = useState<GeneratedState[]>([]);
   const [output, setOutput] = useState('Ready. Click Generate.');
   const [status, setStatus] = useState('Ready.');
   const [dark, setDark] = useState(true);
   const [lexicon, setLexicon] = useState<Record<string, unknown>>({});
-  const [selectedStyleTemplate, setSelectedStyleTemplate] = useState(STYLE_TEMPLATES[0].label);
+  const [selectedStyleTemplate, setSelectedStyleTemplate] = useState(ORACLE_STYLE_TEMPLATES[0].label);
   const [isExtractingPalette, setIsExtractingPalette] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paletteImageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!canUseStorage()) return;
+    window.localStorage.setItem(ORACLE_STATE_STORAGE_KEY, JSON.stringify(form));
+  }, [form]);
 
   const panelClass = dark ? 'app dark' : 'app light';
 
@@ -84,10 +182,36 @@ export default function App() {
   };
 
   const applyStyleTemplate = () => {
-    const template = STYLE_TEMPLATES.find((t) => t.label === selectedStyleTemplate);
+    const template = ORACLE_STYLE_TEMPLATES.find((t) => t.label === selectedStyleTemplate);
     if (!template) return;
     setForm((f) => ({ ...f, styleTokens: template.styleTokens, notes: template.notes }));
     setStatus(`Applied style template: ${template.label}.`);
+  };
+
+  const loadOraclePreset = (params: Record<string, unknown>) => {
+    const defaults = defaultFormState();
+    const safeParams = params && typeof params === 'object' ? params : {};
+    const incomingQualities =
+      safeParams.qualities && typeof safeParams.qualities === 'object'
+        ? (safeParams.qualities as Record<string, boolean>)
+        : {};
+
+    setForm({
+      ...defaults,
+      ...(safeParams as Partial<FormState>),
+      qualities: { ...defaults.qualities, ...incomingQualities },
+    });
+    setStatus('Loaded preset.');
+  };
+
+  const resetOracleModeState = () => {
+    if (canUseStorage()) window.localStorage.removeItem(ORACLE_STATE_STORAGE_KEY);
+    setForm(defaultFormState());
+    setSeries([]);
+    setOutput('Ready. Click Generate.');
+    setStatus('Oracle mode reset to defaults.');
+    setLexicon({});
+    setSelectedStyleTemplate(ORACLE_STYLE_TEMPLATES[0].label);
   };
 
   const handlePaletteImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -118,8 +242,7 @@ export default function App() {
           <label><input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} /> Dark</label>
           <button onClick={() => runGenerate(false)}>Generate</button>
           <button onClick={() => runGenerate(true)}>Series</button>
-          <button onClick={() => navigator.clipboard.writeText(output)}>Copy</button>
-          <button onClick={() => saveText('hypnagnosis_prompts.txt', output)}>Save</button>
+          <button type="button" onClick={resetOracleModeState}>Reset mode state</button>
         </div>
       </header>
       <main className="body">
@@ -129,6 +252,12 @@ export default function App() {
           <button onClick={() => saveText('boot_system_prompts.txt', `${BOOTLOADER_TEXT}\n\n${SYSTEM_FILE_TEXT}\n\n${output}`)}>Export Boot+System</button>
           <button onClick={() => paletteImageInputRef.current?.click()} disabled={isExtractingPalette}>{isExtractingPalette ? 'Extracting palette…' : 'Upload Palette Image'}</button>
           <input ref={paletteImageInputRef} type="file" hidden accept="image/*" onChange={handlePaletteImageUpload} />
+          <PresetManager
+            title="Oracle Preset Packs"
+            storageKey="oracle:preset_packs"
+            getCurrentParams={() => form}
+            onLoadPreset={loadOraclePreset}
+          />
         </aside>
 
         <section className="content">
@@ -140,7 +269,7 @@ export default function App() {
             <label>Style template
               <div className="inline-group">
                 <select value={selectedStyleTemplate} onChange={(e) => setSelectedStyleTemplate(e.target.value)}>
-                  {STYLE_TEMPLATES.map((template) => <option key={template.label}>{template.label}</option>)}
+                  {ORACLE_STYLE_TEMPLATES.map((template) => <option key={template.label}>{template.label}</option>)}
                 </select>
                 <button type="button" onClick={applyStyleTemplate}>Apply Template</button>
               </div>
@@ -194,8 +323,7 @@ export default function App() {
         </section>
 
         <section className="output">
-          <h2>Output</h2>
-          <textarea value={output} onChange={(e) => setOutput(e.target.value)} />
+          <OutputPanel title="Oracle Output" textOutput={output} />
         </section>
       </main>
       <footer className="status">{status}</footer>
