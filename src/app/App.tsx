@@ -135,16 +135,21 @@ function AppShell() {
       </header>
 
       <div className="mode-shell-content">
-        <section hidden={mode !== 'oracle'} aria-hidden={mode !== 'oracle'}>
-          <ErrorBoundary>
-            <OracleApp />
-          </ErrorBoundary>
-        </section>
-        <section hidden={mode !== 'graphicNotation'} aria-hidden={mode !== 'graphicNotation'}>
-          <ErrorBoundary>
-            <GraphicNotationApp />
-          </ErrorBoundary>
-        </section>
+        {mode === 'oracle' ? (
+          <section aria-label="oracle-mode-panel">
+            <ErrorBoundary>
+              <OracleApp />
+            </ErrorBoundary>
+          </section>
+        ) : null}
+
+        {mode === 'graphicNotation' ? (
+          <section aria-label="graphic-notation-mode-panel">
+            <ErrorBoundary>
+              <GraphicNotationApp />
+            </ErrorBoundary>
+          </section>
+        ) : null}
       </div>
     </div>
   );
