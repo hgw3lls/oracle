@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildImagePromptFrame,
   buildMasterPrompt,
-  buildImagePromptFrame,
   buildPlatePrompts,
   buildVariantMatrix,
   collectEnabledModules,
