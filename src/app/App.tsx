@@ -1,4 +1,4 @@
-import { ChangeEvent, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BOOTLOADER_TEXT,
   HUMANIZER_QUALITIES,
@@ -12,7 +12,11 @@ import { extractPaletteFromImage } from './paletteExtract';
 import GraphicNotationApp from '../graphic-notation/GraphicNotationApp';
 import OutputPanel from '../shared/components/OutputPanel';
 import PresetManager from '../shared/components/PresetManager';
+import ErrorBoundary from '../shared/components/ErrorBoundary';
 import './app.css';
+
+const MODE_STORAGE_KEY = 'app:mode';
+const ORACLE_STATE_STORAGE_KEY = 'oracle:mode_state';
 
 const ORACLE_STYLE_TEMPLATES = [
   {
@@ -32,14 +36,58 @@ const ORACLE_STYLE_TEMPLATES = [
   },
 ];
 
+const MODE_META = {
+  oracle: { label: 'Oracle', description: 'original prompt builder' },
+  graphicNotation: { label: 'Graphic Notation', description: 'graphical score prompt builder' },
+};
+
 type BuilderMode = 'oracle' | 'graphicNotation';
+
+const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const safeParse = (value: string) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const loadStoredOracleForm = () => {
+  if (!canUseStorage()) return defaultFormState();
+  const raw = window.localStorage.getItem(ORACLE_STATE_STORAGE_KEY);
+  if (!raw) return defaultFormState();
+  const parsed = safeParse(raw);
+  const defaults = defaultFormState();
+
+  if (!parsed || typeof parsed !== 'object') return defaults;
+  const incoming = parsed as Partial<FormState>;
+
+  return {
+    ...defaults,
+    ...incoming,
+    qualities: {
+      ...defaults.qualities,
+      ...(incoming.qualities && typeof incoming.qualities === 'object' ? incoming.qualities : {}),
+    },
+  };
+};
 
 export default function App() {
   return <AppShell />;
 }
 
 function AppShell() {
-  const [mode, setMode] = useState<BuilderMode>('oracle');
+  const [mode, setMode] = useState<BuilderMode>(() => {
+    if (!canUseStorage()) return 'oracle';
+    const stored = window.localStorage.getItem(MODE_STORAGE_KEY);
+    return stored === 'graphicNotation' ? 'graphicNotation' : 'oracle';
+  });
+
+  useEffect(() => {
+    if (!canUseStorage()) return;
+    window.localStorage.setItem(MODE_STORAGE_KEY, mode);
+  }, [mode]);
 
   return (
     <div className="app-shell">
@@ -53,14 +101,21 @@ function AppShell() {
             Graphic Notation
           </button>
         </div>
+        <p className="mode-indicator">
+          Mode: <strong>{MODE_META[mode].label}</strong> — {MODE_META[mode].description}
+        </p>
       </header>
 
       <div className="mode-shell-content">
         <section hidden={mode !== 'oracle'} aria-hidden={mode !== 'oracle'}>
-          <OracleApp />
+          <ErrorBoundary>
+            <OracleApp />
+          </ErrorBoundary>
         </section>
         <section hidden={mode !== 'graphicNotation'} aria-hidden={mode !== 'graphicNotation'}>
-          <GraphicNotationApp />
+          <ErrorBoundary>
+            <GraphicNotationApp />
+          </ErrorBoundary>
         </section>
       </div>
     </div>
@@ -68,7 +123,7 @@ function AppShell() {
 }
 
 function OracleApp() {
-  const [form, setForm] = useState<FormState>(defaultFormState());
+  const [form, setForm] = useState<FormState>(() => loadStoredOracleForm());
   const [series, setSeries] = useState<GeneratedState[]>([]);
   const [output, setOutput] = useState('Ready. Click Generate.');
   const [status, setStatus] = useState('Ready.');
@@ -78,6 +133,11 @@ function OracleApp() {
   const [isExtractingPalette, setIsExtractingPalette] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paletteImageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!canUseStorage()) return;
+    window.localStorage.setItem(ORACLE_STATE_STORAGE_KEY, JSON.stringify(form));
+  }, [form]);
 
   const panelClass = dark ? 'app dark' : 'app light';
 
@@ -144,6 +204,16 @@ function OracleApp() {
     setStatus('Loaded preset.');
   };
 
+  const resetOracleModeState = () => {
+    if (canUseStorage()) window.localStorage.removeItem(ORACLE_STATE_STORAGE_KEY);
+    setForm(defaultFormState());
+    setSeries([]);
+    setOutput('Ready. Click Generate.');
+    setStatus('Oracle mode reset to defaults.');
+    setLexicon({});
+    setSelectedStyleTemplate(ORACLE_STYLE_TEMPLATES[0].label);
+  };
+
   const handlePaletteImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -172,6 +242,7 @@ function OracleApp() {
           <label><input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} /> Dark</label>
           <button onClick={() => runGenerate(false)}>Generate</button>
           <button onClick={() => runGenerate(true)}>Series</button>
+          <button type="button" onClick={resetOracleModeState}>Reset mode state</button>
         </div>
       </header>
       <main className="body">

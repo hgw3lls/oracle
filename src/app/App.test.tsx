@@ -8,10 +8,12 @@ describe('HYPNAGNOSIS app shell', () => {
     expect(screen.getAllByText('Mode Switch')[0]).toBeInTheDocument();
     expect(screen.getAllByRole('tab', { name: 'Oracle' })[0]).toBeInTheDocument();
     expect(screen.getAllByRole('tab', { name: 'Graphic Notation' })[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Mode:/)[0]).toBeInTheDocument();
     expect(screen.getAllByText('HYPNAGNOSIS Prompt Builder')[0]).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Generate' })[0]).toBeInTheDocument();
     expect(screen.getAllByText('Oracle Output')[0]).toBeInTheDocument();
     expect(screen.getAllByText('Oracle Preset Packs')[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Reset mode state' })[0]).toBeInTheDocument();
   });
 
   it('keeps Oracle state when switching modes', () => {
@@ -29,5 +31,11 @@ describe('HYPNAGNOSIS app shell', () => {
     fireEvent.click(screen.getAllByRole('tab', { name: 'Oracle' })[0]);
     const visibleOracleSection = document.querySelector('section[aria-hidden="false"]') as HTMLElement;
     expect(within(visibleOracleSection).getByLabelText('Subject')).toHaveValue('Persistent Oracle Subject');
+  });
+
+  it('restores last selected mode from localStorage', () => {
+    render(<App />);
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Graphic Notation' })[0]);
+    expect(window.localStorage.getItem('app:mode')).toBe('graphicNotation');
   });
 });

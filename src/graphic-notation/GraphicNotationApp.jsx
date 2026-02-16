@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildMasterPrompt,
   buildPlatePrompts,
@@ -9,6 +9,8 @@ import {
 } from './promptBuilders';
 import OutputPanel from '../shared/components/OutputPanel';
 import PresetManager from '../shared/components/PresetManager';
+
+const GRAPHIC_STATE_STORAGE_KEY = 'graphic:mode_state';
 
 const builtInModules = [
   {
@@ -84,10 +86,38 @@ const emptyCustomModule = {
   rules: '',
 };
 
+const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const safeParse = (value) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const loadGraphicModeState = () => {
+  if (!canUseStorage()) return defaultState;
+  const raw = window.localStorage.getItem(GRAPHIC_STATE_STORAGE_KEY);
+  if (!raw) return defaultState;
+  const parsed = safeParse(raw);
+  if (!parsed || typeof parsed !== 'object') return defaultState;
+  return {
+    ...defaultState,
+    ...parsed,
+    modules: Array.isArray(parsed.modules) ? parsed.modules : defaultState.modules,
+  };
+};
+
 export default function GraphicNotationApp() {
-  const [form, setForm] = useState(defaultState);
+  const [form, setForm] = useState(() => loadGraphicModeState());
   const [newModule, setNewModule] = useState(emptyCustomModule);
   const customIdRef = useRef(1);
+
+  useEffect(() => {
+    if (!canUseStorage()) return;
+    window.localStorage.setItem(GRAPHIC_STATE_STORAGE_KEY, JSON.stringify(form));
+  }, [form]);
 
   const spec = useMemo(() => deriveSpec(form), [form]);
   const enabledModules = useMemo(() => collectEnabledModules(form.modules), [form.modules]);
@@ -167,6 +197,12 @@ export default function GraphicNotationApp() {
     }));
   };
 
+  const resetGraphicModeState = () => {
+    if (canUseStorage()) window.localStorage.removeItem(GRAPHIC_STATE_STORAGE_KEY);
+    setForm(defaultState);
+    setNewModule(emptyCustomModule);
+  };
+
   return (
     <div className="graphic-notation-app">
       <header className="graphic-notation-header">
@@ -191,6 +227,7 @@ export default function GraphicNotationApp() {
           <label>Palette<input value={form.palette} onChange={(event) => update('palette', event.target.value)} /></label>
           <label>Gesture vocabulary (comma-separated)<textarea value={form.gestures} onChange={(event) => update('gestures', event.target.value)} /></label>
           <label>Constraints<textarea value={form.constraints} onChange={(event) => update('constraints', event.target.value)} /></label>
+          <button type="button" onClick={resetGraphicModeState}>Reset mode state</button>
         </section>
 
         <section className="graphic-notation-card">

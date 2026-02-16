@@ -2,6 +2,7 @@
 .app-shell { min-height: 100vh; background: #0c0f14; color: #e6e8ee; }
 .mode-shell-header { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #242b3a; background:#101520; }
 .mode-shell-header h1 { margin:0; font-size:16px; }
+.mode-indicator { margin:0; font-size:13px; color:#b6c0d2; }
 .mode-shell-content { padding:12px; }
 .mode-toggle { display:flex; gap:4px; padding:3px; border:1px solid #242b3a; border-radius:10px; background:#0f1320; }
 .mode-toggle button { border-radius:6px; padding:6px 10px; }
@@ -64,3 +65,7 @@ textarea { min-height:90px; }
 .graphic-module-item { border:1px solid #242b3a; border-radius:8px; padding:8px; display:grid; gap:8px; }
 .graphic-module-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .graphic-module-targets { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:6px; }
+
+.mode-error-fallback { border:1px solid #7a2a2a; background:#2a1414; color:#ffd6d6; border-radius:12px; padding:16px; }
+.mode-error-fallback h2 { margin:0 0 8px; font-size:16px; }
+.mode-error-fallback p { margin:0; }
