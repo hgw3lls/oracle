@@ -6,6 +6,8 @@ describe('HYPNAGNOSIS app shell', () => {
   it('renders modern layout controls', () => {
     render(<App />);
     expect(screen.getByText('HYPNAGNOSIS Prompt Builder')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Oracle' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Graphic Notation PromptGen' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Series' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Upload Palette Image' })).toBeInTheDocument();
