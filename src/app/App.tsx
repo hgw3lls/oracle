@@ -10,6 +10,7 @@ import {
 } from './hypnaEngine';
 import { extractPaletteFromImage } from './paletteExtract';
 import GraphicNotationApp from '../graphic-notation/GraphicNotationApp';
+import OutputPanel from '../shared/components/OutputPanel';
 import './app.css';
 
 const ORACLE_STYLE_TEMPLATES = [
@@ -154,8 +155,6 @@ function OracleApp() {
           <label><input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} /> Dark</label>
           <button onClick={() => runGenerate(false)}>Generate</button>
           <button onClick={() => runGenerate(true)}>Series</button>
-          <button onClick={() => navigator.clipboard.writeText(output)}>Copy</button>
-          <button onClick={() => saveText('hypnagnosis_prompts.txt', output)}>Save</button>
         </div>
       </header>
       <main className="body">
@@ -230,8 +229,7 @@ function OracleApp() {
         </section>
 
         <section className="output">
-          <h2>Output</h2>
-          <textarea value={output} onChange={(e) => setOutput(e.target.value)} />
+          <OutputPanel title="Oracle Output" textOutput={output} />
         </section>
       </main>
       <footer className="status">{status}</footer>

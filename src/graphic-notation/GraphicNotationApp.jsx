@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { buildMasterPrompt, buildPlatePrompts, deriveSpec } from './promptBuilders';
+import OutputPanel from '../shared/components/OutputPanel';
 
 const defaultState = {
   title: 'Signal Cartography No. 1',
@@ -18,6 +19,10 @@ export default function GraphicNotationApp() {
   const spec = useMemo(() => deriveSpec(form), [form]);
   const masterPrompt = useMemo(() => buildMasterPrompt(spec), [spec]);
   const platePrompts = useMemo(() => buildPlatePrompts(spec), [spec]);
+  const plateTextOutput = useMemo(
+    () => platePrompts.map((plate) => `=== ${plate.label} ===\n${plate.prompt || ''}`).join('\n\n'),
+    [platePrompts],
+  );
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -53,21 +58,11 @@ export default function GraphicNotationApp() {
         </section>
 
         <section className="graphic-notation-card">
-          <h3>Master Prompt</h3>
-          <textarea value={masterPrompt || ''} readOnly />
+          <OutputPanel title="Master Prompt" textOutput={masterPrompt || ''} jsonOutput={spec || {}} />
         </section>
 
         <section className="graphic-notation-card">
-          <h3>Plate Prompts</h3>
-          {platePrompts.length === 0 ? <p>No plate prompts yet.</p> : null}
-          <div className="graphic-notation-plates">
-            {platePrompts.map((plate) => (
-              <article key={plate.id} className="graphic-notation-plate">
-                <h4>{plate.label}</h4>
-                <textarea value={plate.prompt || ''} readOnly />
-              </article>
-            ))}
-          </div>
+          <OutputPanel title="Plate Prompts" textOutput={plateTextOutput || ''} jsonOutput={platePrompts} />
         </section>
       </main>
     </div>

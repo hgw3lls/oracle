@@ -35,6 +35,11 @@ textarea { min-height:90px; }
 .output textarea { height:100%; min-height:300px; }
 .status { background:var(--panel); padding:8px 12px; color:var(--muted); border-top:1px solid var(--border); }
 
+.output-panel { display:grid; gap:8px; }
+.output-panel-header { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+.output-panel-header h3 { margin:0; font-size:16px; }
+.output-panel-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.output-panel textarea { width:100%; min-height:220px; }
 
 .graphic-notation-app { background:#111725; border:1px solid #2c3445; border-radius:12px; padding:12px; color:#e6e8ee; }
 .graphic-notation-header h2 { margin:0 0 6px; }
@@ -45,5 +50,3 @@ textarea { min-height:90px; }
 .graphic-notation-card h4 { margin:0; font-size:13px; color:#b6c0d2; }
 .graphic-notation-card pre { margin:0; white-space:pre-wrap; word-break:break-word; background:#0b0f18; border:1px solid #242b3a; border-radius:8px; padding:8px; font-size:12px; }
 .graphic-notation-card textarea { min-height:140px; }
-.graphic-notation-plates { display:grid; gap:10px; }
-.graphic-notation-plate { display:grid; gap:6px; }
