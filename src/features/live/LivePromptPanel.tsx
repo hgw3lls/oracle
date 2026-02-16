@@ -85,7 +85,9 @@ export function LivePromptPanel() {
       <h4>Debug Sections</h4>
       <ul>
         {debugSections.map((d) => (
-          <li key={d.title}><strong>{d.title}:</strong> {d.text}</li>
+          <li key={d.title}>
+            <strong>{d.title}:</strong> {d.text}
+          </li>
         ))}
       </ul>
     </Panel>
