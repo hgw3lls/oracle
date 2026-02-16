@@ -172,3 +172,43 @@ export function buildPlatePrompts(specInput, modulesInput = []) {
     };
   });
 }
+
+export function buildImagePromptFrame(specInput, modulesInput = []) {
+  const spec = deriveSpec(specInput);
+  const modules = collectEnabledModules(modulesInput);
+  const gestures = spec.gestures.length ? spec.gestures : ['anchor glyph', 'transition mark', 'silence field'];
+
+  const styleTokens = modules
+    .filter((module) => module.targets.includes('hypna') || module.targets.includes('humanizer'))
+    .flatMap((module) => module.tokens.map((token) => `${token} [${module.name}]`));
+
+  const structureRules = modules
+    .filter((module) => module.targets.includes('structure') || module.targets.includes('variation'))
+    .flatMap((module) => module.rules.map((rule) => `${rule} [${module.name}]`));
+
+  const impossibleTokens = modules
+    .filter((module) => module.targets.includes('impossible'))
+    .flatMap((module) => module.tokens.map((token) => `${token} [${module.name}]`));
+
+  return [
+    'IMAGE GENERATION PROMPT FRAME',
+    '[SUBJECT]',
+    `${spec.title} interpreted as a performable graphic music score for ${spec.ensemble}.`,
+    '[COMPOSITION]',
+    `Duration map: ${spec.durationSec} seconds with ${spec.density} information density and clear left-to-right reading flow.`,
+    `Primary gestures: ${gestures.join('; ')}.`,
+    '[STYLE]',
+    `Visual intent: ${spec.visualIntent}.`,
+    styleTokens.length ? `Tactile/style tokens: ${styleTokens.join(' | ')}.` : 'Tactile/style tokens: hand-drawn ink, pressure drift, visible human correction.',
+    '[PALETTE]',
+    `${spec.palette}.`,
+    '[PERFORMANCE CUES]',
+    structureRules.length ? `Rule spine: ${structureRules.join(' | ')}.` : 'Rule spine: preserve legible timing, dynamics, and event hierarchy.',
+    '[EXPERIMENTAL LAYER]',
+    impossibleTokens.length ? `Optional impossible cues: ${impossibleTokens.join(' | ')}.` : 'Optional impossible cues: subtle non-euclidean spacing that remains playable.',
+    '[NEGATIVE PROMPT]',
+    `${spec.constraints || 'Avoid sterile vector polish, conventional 5-line staff notation, and unreadable symbol clutter.'}`,
+    '[OUTPUT]',
+    'One high-resolution still image of a coherent, performable, gallery-ready graphic notation score sheet.',
+  ].join('\n');
+}

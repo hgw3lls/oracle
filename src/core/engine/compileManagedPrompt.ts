@@ -1,4 +1,4 @@
-import type { SchemaV3, PromptBlock } from '@/core/schema/schemaV2';
+import type { SchemaV3, PromptBlock, PromptBlockKind } from '@/core/schema/schemaV2';
 import { compilePromptV2 } from './compilePromptV2';
 
 function joinClean(parts: string[]) {
@@ -6,6 +6,45 @@ function joinClean(parts: string[]) {
     .map((s) => s.trim())
     .filter(Boolean)
     .join('\n');
+}
+
+const BLOCK_LABELS: Record<PromptBlockKind, string> = {
+  CORE: 'Subject',
+  STYLE_PACKS: 'Style',
+  PALETTE_PACK: 'Palette guidance',
+  CONSTRAINTS: 'Render constraints',
+  PROCESS: 'Process',
+  OUTPUT_SPEC: 'Output spec',
+  NEGATIVES: 'Negative prompt',
+};
+
+const BLOCK_ORDER: PromptBlockKind[] = ['CORE', 'STYLE_PACKS', 'PALETTE_PACK', 'PROCESS', 'OUTPUT_SPEC', 'CONSTRAINTS', 'NEGATIVES'];
+
+function orderedBlocks(blocks: PromptBlock[]): PromptBlock[] {
+  const rank = new Map(BLOCK_ORDER.map((kind, index) => [kind, index]));
+  return [...blocks].sort((a, b) => {
+    const ar = rank.get(a.kind) ?? 999;
+    const br = rank.get(b.kind) ?? 999;
+    if (ar !== br) return ar - br;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function formatPositiveBlocks(blocks: PromptBlock[]): string {
+  const lines = orderedBlocks(blocks)
+    .filter((b) => b.kind !== 'NEGATIVES')
+    .map((b) => `- ${BLOCK_LABELS[b.kind]}: ${b.content.trim()}`);
+  return lines.length ? ['Prompt directives:', ...lines].join('\n') : '';
+}
+
+function formatNegativeBlocks(blocks: PromptBlock[]): string {
+  const negatives = orderedBlocks(blocks)
+    .filter((b) => b.kind === 'NEGATIVES')
+    .map((b) => b.content.trim())
+    .filter(Boolean);
+
+  if (!negatives.length) return '';
+  return `Negative prompt: ${negatives.join('; ')}.`;
 }
 
 export function lintManagedPrompt(schema: SchemaV3, blocks: PromptBlock[]): string[] {
@@ -52,20 +91,21 @@ export function compileManagedPrompt(schema: SchemaV3): { compiled: string; warn
     return schema.PALETTE.descriptive ? `Palette: ${schema.PALETTE.descriptive}.` : '';
   })();
 
-  const constraintsLine = `Constraints: max_tokens=${schema.CONSTRAINTS.max_tokens}; avoid=${schema.CONSTRAINTS.avoid}.`;
+  const constraintsLine = `Hard constraints: max_tokens=${schema.CONSTRAINTS.max_tokens}; avoid=${schema.CONSTRAINTS.avoid}.`;
 
-  const body = joinClean(enabled.map((b) => b.content));
+  const body = formatPositiveBlocks(enabled);
+  const negativesLine = formatNegativeBlocks(enabled);
   const warnings = lintManagedPrompt(schema, blocks);
 
   if (pm.compile_mode === 'MINIMAL') {
-    return { compiled: joinClean([body]), warnings };
+    return { compiled: joinClean([body, negativesLine]), warnings };
   }
 
   if (pm.compile_mode === 'BALANCED') {
-    return { compiled: joinClean([body, paletteLine, schema.PROMPT_GENOME.suffix]), warnings };
+    return { compiled: joinClean([body, negativesLine, paletteLine, schema.PROMPT_GENOME.suffix]), warnings };
   }
 
   // MAX_CONTROL: stitch in the full wizard prompt as an appendix for “power users”
   const wizard = compilePromptV2(schema).compiledPrompt;
-  return { compiled: joinClean([body, paletteLine, constraintsLine, '\n---\n', wizard]), warnings };
+  return { compiled: joinClean([body, negativesLine, paletteLine, constraintsLine, '\n---\n', wizard]), warnings };
 }
