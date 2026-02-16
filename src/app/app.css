@@ -32,9 +32,14 @@ textarea { min-height:90px; }
 .checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 .palette-preview { display:flex; gap:6px; flex-wrap:wrap; }
 .palette-preview span { width:24px; height:24px; border-radius:6px; border:1px solid var(--border); display:inline-block; }
-.output { padding:12px; display:grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap:10px; overflow:auto; }
+.output { padding:12px; display:grid; grid-auto-rows:minmax(0,auto); gap:10px; overflow:auto; align-content:start; }
 .output textarea { height:100%; min-height:300px; }
 .status { background:var(--panel); padding:8px 12px; color:var(--muted); border-top:1px solid var(--border); }
+
+
+.output-tabs { display:flex; gap:8px; flex-wrap:wrap; }
+.output-tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.output-actions-bar { display:flex; gap:8px; flex-wrap:wrap; }
 
 .output-panel { display:grid; gap:8px; }
 .output-panel-header { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
