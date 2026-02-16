@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildMasterPrompt,
+  buildImagePromptFrame,
   buildPlatePrompts,
   buildVariantMatrix,
   collectEnabledModules,
@@ -122,6 +123,7 @@ export default function GraphicNotationApp() {
   const spec = useMemo(() => deriveSpec(form), [form]);
   const enabledModules = useMemo(() => collectEnabledModules(form.modules), [form.modules]);
   const masterPrompt = useMemo(() => buildMasterPrompt(spec, form.modules), [spec, form.modules]);
+  const imagePromptFrame = useMemo(() => buildImagePromptFrame(spec, form.modules), [spec, form.modules]);
   const platePrompts = useMemo(() => buildPlatePrompts(spec, form.modules), [spec, form.modules]);
   const variantMatrix = useMemo(() => buildVariantMatrix(spec, form.modules), [spec, form.modules]);
 
@@ -349,6 +351,10 @@ export default function GraphicNotationApp() {
 
         <section className="graphic-notation-card">
           <OutputPanel title="Master Prompt" textOutput={masterPrompt || ''} jsonOutput={{ spec, enabledModules }} />
+        </section>
+
+        <section className="graphic-notation-card">
+          <OutputPanel title="Image Prompt Frame" textOutput={imagePromptFrame || ''} jsonOutput={{ spec, enabledModules }} />
         </section>
 
         <section className="graphic-notation-card">
