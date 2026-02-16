@@ -37,36 +37,11 @@ export function LivePromptPanel() {
     <Panel>
       <h3>Compiled Prompt</h3>
 
-      <div style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
-        <section style={sectionCardStyle} aria-label="Prompt actions">
-          <strong style={{ fontSize: 13, letterSpacing: 0.3 }}>Prompt actions</strong>
-          <div style={actionsRowStyle}>
-            <button type="button" style={buttonStyle} onClick={() => navigator.clipboard.writeText(prompt)}>
-              Copy image prompt
-            </button>
-            <button type="button" style={buttonStyle} onClick={() => downloadText('compiled_prompt.txt', prompt)}>
-              Export compiled prompt (.txt)
-            </button>
-          </div>
-          <p style={{ margin: 0, opacity: 0.82, fontSize: 12 }}>
-            Copy and paste this prompt directly into ChatGPT or your preferred image generator.
-          </p>
-        </section>
-
-        <section style={sectionCardStyle} aria-label="Schema actions">
-          <strong style={{ fontSize: 13, letterSpacing: 0.3 }}>Schema actions</strong>
-          <div style={actionsRowStyle}>
-            <button type="button" style={buttonStyle} onClick={() => downloadJson('schema.json', schema)}>
-              Export schema JSON
-            </button>
-            <button
-              type="button"
-              style={buttonStyle}
-              onClick={() => downloadJson('schema_enabled_only.json', buildEnabledOnlySchema(schema))}
-            >
-              Export enabled-only schema JSON
-            </button>
-          </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button type="button" onClick={() => navigator.clipboard.writeText(prompt)}>Copy image prompt</button>
+        <button type="button" onClick={() => downloadText('compiled_prompt.txt', prompt)}>Export compiled prompt (.txt)</button>
+        <button type="button" onClick={() => downloadJson('schema.json', schema)}>Export schema JSON</button>
+        <button type="button" onClick={() => downloadJson('schema_enabled_only.json', buildEnabledOnlySchema(schema))}>Export enabled-only schema JSON</button>
 
           <label style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 12, opacity: 0.85 }}>Import schema JSON</span>
@@ -89,6 +64,10 @@ export function LivePromptPanel() {
           </label>
         </section>
       </div>
+
+      <p style={{ marginTop: 0, opacity: 0.8, fontSize: 12 }}>
+        Copy and paste this prompt directly into ChatGPT or your preferred image generator.
+      </p>
 
       <pre>{prompt}</pre>
 
