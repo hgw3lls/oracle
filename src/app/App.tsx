@@ -126,11 +126,13 @@ function OracleApp() {
   const [form, setForm] = useState<FormState>(() => loadStoredOracleForm());
   const [series, setSeries] = useState<GeneratedState[]>([]);
   const [output, setOutput] = useState('Ready. Click Generate.');
+  const [imagePromptOutput, setImagePromptOutput] = useState('Ready. Generate to build an image-specific prompt.');
   const [status, setStatus] = useState('Ready.');
   const [dark, setDark] = useState(true);
   const [lexicon, setLexicon] = useState<Record<string, unknown>>({});
   const [selectedStyleTemplate, setSelectedStyleTemplate] = useState(ORACLE_STYLE_TEMPLATES[0].label);
   const [isExtractingPalette, setIsExtractingPalette] = useState(false);
+  const [lastRunMode, setLastRunMode] = useState<'single' | 'series'>('single');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paletteImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,6 +149,8 @@ function OracleApp() {
     try {
       const next = generateSeries(form, lexicon);
       setSeries(next);
+      const firstImagePrompt = next[0]?.prompt ?? '';
+
       if (asSeries) {
         setOutput(next.map((s) => `=== STATE ${s.index} ===\n${s.prompt}`).join('\n\n'));
         setStatus(`Generated ${next.length} states.`);
@@ -154,9 +158,21 @@ function OracleApp() {
         setOutput(next[0]?.prompt ?? '');
         setStatus('Generated 1 prompt.');
       }
+
+      const imagePromptStates = generateSeries({ ...form, exportMode: 'IMAGE' }, lexicon);
+      setImagePromptOutput(
+        asSeries
+          ? imagePromptStates.map((state) => `=== IMAGE STATE ${state.index} ===\n${state.prompt}`).join('\n\n')
+          : (imagePromptStates[0]?.prompt ?? firstImagePrompt),
+      );
+      setLastRunMode(asSeries ? 'series' : 'single');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Generation failed');
     }
+  };
+
+  const regenerate = () => {
+    runGenerate(lastRunMode === 'series');
   };
 
   const saveText = (name: string, text: string) => {
@@ -209,9 +225,11 @@ function OracleApp() {
     setForm(defaultFormState());
     setSeries([]);
     setOutput('Ready. Click Generate.');
+    setImagePromptOutput('Ready. Generate to build an image-specific prompt.');
     setStatus('Oracle mode reset to defaults.');
     setLexicon({});
     setSelectedStyleTemplate(ORACLE_STYLE_TEMPLATES[0].label);
+    setLastRunMode('single');
   };
 
   const handlePaletteImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -242,6 +260,7 @@ function OracleApp() {
           <label><input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} /> Dark</label>
           <button onClick={() => runGenerate(false)}>Generate</button>
           <button onClick={() => runGenerate(true)}>Series</button>
+          <button onClick={regenerate}>Regenerate</button>
           <button type="button" onClick={resetOracleModeState}>Reset mode state</button>
         </div>
       </header>
@@ -249,6 +268,8 @@ function OracleApp() {
         <aside className="sidebar">
           <button onClick={() => fileInputRef.current?.click()}>Load Lexicon</button>
           <input ref={fileInputRef} type="file" hidden accept="application/json" onChange={loadLexicon} />
+          <button type="button" onClick={() => runGenerate(false)}>Quick Generate</button>
+          <button type="button" onClick={regenerate}>Quick Regenerate</button>
           <button onClick={() => saveText('boot_system_prompts.txt', `${BOOTLOADER_TEXT}\n\n${SYSTEM_FILE_TEXT}\n\n${output}`)}>Export Boot+System</button>
           <button onClick={() => paletteImageInputRef.current?.click()} disabled={isExtractingPalette}>{isExtractingPalette ? 'Extracting palette…' : 'Upload Palette Image'}</button>
           <input ref={paletteImageInputRef} type="file" hidden accept="image/*" onChange={handlePaletteImageUpload} />
@@ -324,6 +345,7 @@ function OracleApp() {
 
         <section className="output">
           <OutputPanel title="Oracle Output" textOutput={output} />
+          <OutputPanel title="Image Generation Prompt" textOutput={imagePromptOutput} />
         </section>
       </main>
       <footer className="status">{status}</footer>

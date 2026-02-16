@@ -18,7 +18,7 @@
 .actions { display:flex; gap:8px; align-items:center; }
 button { background:var(--entry); color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:8px; cursor:pointer; }
 button:disabled { opacity:0.65; cursor:progress; }
-.body { display:grid; grid-template-columns: 220px 1fr 40%; gap:12px; padding:12px; overflow:hidden; }
+.body { display:grid; grid-template-columns: 240px 1fr 42%; gap:12px; padding:12px; overflow:hidden; }
 .sidebar,.output,.card { background:var(--panel); border:1px solid var(--border); border-radius:12px; }
 .sidebar { padding:10px; display:flex; flex-direction:column; gap:8px; }
 .content { overflow:auto; padding-right:4px; }
@@ -32,7 +32,7 @@ textarea { min-height:90px; }
 .checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 .palette-preview { display:flex; gap:6px; flex-wrap:wrap; }
 .palette-preview span { width:24px; height:24px; border-radius:6px; border:1px solid var(--border); display:inline-block; }
-.output { padding:12px; display:grid; grid-template-rows:auto 1fr; }
+.output { padding:12px; display:grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap:10px; overflow:auto; }
 .output textarea { height:100%; min-height:300px; }
 .status { background:var(--panel); padding:8px 12px; color:var(--muted); border-top:1px solid var(--border); }
 
@@ -41,6 +41,19 @@ textarea { min-height:90px; }
 .output-panel-header h3 { margin:0; font-size:16px; }
 .output-panel-actions { display:flex; gap:8px; flex-wrap:wrap; }
 .output-panel textarea { width:100%; min-height:220px; }
+
+@media (max-width: 1200px) {
+  .body { grid-template-columns: 220px 1fr; }
+  .output { grid-column: 1 / -1; grid-template-rows: repeat(2, minmax(220px, 1fr)); }
+}
+
+@media (max-width: 800px) {
+  .mode-shell-header { flex-wrap: wrap; }
+  .appbar { flex-direction: column; gap: 10px; }
+  .body { grid-template-columns: 1fr; }
+  .checks { grid-template-columns: 1fr; }
+  .actions { flex-wrap: wrap; }
+}
 
 .graphic-notation-app { background:#111725; border:1px solid #2c3445; border-radius:12px; padding:12px; color:#e6e8ee; }
 .graphic-notation-header h2 { margin:0 0 6px; }
