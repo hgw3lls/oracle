@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildImagePromptFrame,
   buildMasterPrompt,
+  buildImagePromptFrame,
   buildPlatePrompts,
   buildVariantMatrix,
   collectEnabledModules,
@@ -144,6 +145,23 @@ export default function GraphicNotationApp() {
     if (!canUseStorage()) return;
     window.localStorage.setItem(GRAPHIC_STATE_STORAGE_KEY, JSON.stringify(form));
   }, [form]);
+
+  const spec = useMemo(() => deriveSpec(form), [form]);
+  const enabledModules = useMemo(() => collectEnabledModules(form.modules), [form.modules]);
+  const masterPrompt = useMemo(() => buildMasterPrompt(spec, form.modules), [spec, form.modules]);
+  const imagePromptFrame = useMemo(() => buildImagePromptFrame(spec, form.modules), [spec, form.modules]);
+  const platePrompts = useMemo(() => buildPlatePrompts(spec, form.modules), [spec, form.modules]);
+  const variantMatrix = useMemo(() => buildVariantMatrix(spec, form.modules), [spec, form.modules]);
+
+  const plateTextOutput = useMemo(
+    () => platePrompts.map((plate) => `=== ${plate.label} ===\n${plate.prompt || ''}`).join('\n\n'),
+    [platePrompts],
+  );
+
+  const variantTextOutput = useMemo(
+    () => variantMatrix.map((variant) => `=== ${variant.label} ===\n${variant.prompt || ''}`).join('\n\n'),
+    [variantMatrix],
+  );
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -387,7 +405,11 @@ export default function GraphicNotationApp() {
         </section>
 
         <section className="graphic-notation-card">
-          <OutputPanel title="Variant Matrix" textOutput={outputs.variantTextOutput || ''} jsonOutput={outputs.variantMatrix} />
+          <OutputPanel title="Image Prompt Frame" textOutput={imagePromptFrame || ''} jsonOutput={{ spec, enabledModules }} />
+        </section>
+
+        <section className="graphic-notation-card">
+          <OutputPanel title="Variant Matrix" textOutput={variantTextOutput || ''} jsonOutput={variantMatrix} />
         </section>
 
         <section className="graphic-notation-card">

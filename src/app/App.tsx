@@ -42,6 +42,34 @@ const MODE_META = {
 };
 
 type BuilderMode = 'oracle' | 'graphicNotation';
+type OutputTab = 'oraclePrompt' | 'oracleVariations' | 'imagePrompt';
+type PerturbationStrength = 'slight' | 'medium' | 'large';
+
+const PERTURBATION_MAP: Record<PerturbationStrength, string[]> = {
+  slight: ['with subtle compositional drift', 'introduce minor texture variance', 'slightly shift tonal rhythm'],
+  medium: ['remix framing and mark density', 'amplify contrast and symbolic layering', 'push palette tension with controlled artifacts'],
+  large: ['radically recompose with surreal spatial discontinuities', 'perform an aggressive stylistic mutation', 'replace visual grammar with high-voltage abstraction'],
+};
+
+const uniquePromptLines = (text: string) => {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return Array.from(new Set(lines));
+};
+
+const perturbPromptText = (text: string, strength: PerturbationStrength) => {
+  const lines = uniquePromptLines(text);
+  if (!lines.length) return text;
+
+  return lines
+    .map((line, index) => {
+      const modifier = PERTURBATION_MAP[strength][index % PERTURBATION_MAP[strength].length];
+      return `${line}; ${modifier}`;
+    })
+    .join('\n');
+};
 
 const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
@@ -131,13 +159,16 @@ function OracleApp() {
   const [form, setForm] = useState<FormState>(() => loadStoredOracleForm());
   const [series, setSeries] = useState<GeneratedState[]>([]);
   const [output, setOutput] = useState('Ready. Click Generate.');
+  const [variationOutput, setVariationOutput] = useState('Ready. Click Series to build variations.');
   const [imagePromptOutput, setImagePromptOutput] = useState('Ready. Generate to build an image-specific prompt.');
+  const [imageVariationOutput, setImageVariationOutput] = useState('Ready. Click Series to generate image variations.');
   const [status, setStatus] = useState('Ready.');
   const [dark, setDark] = useState(true);
   const [lexicon, setLexicon] = useState<Record<string, unknown>>({});
   const [selectedStyleTemplate, setSelectedStyleTemplate] = useState(ORACLE_STYLE_TEMPLATES[0].label);
   const [isExtractingPalette, setIsExtractingPalette] = useState(false);
   const [lastRunMode, setLastRunMode] = useState<'single' | 'series'>('single');
+  const [activeOutputTab, setActiveOutputTab] = useState<OutputTab>('oraclePrompt');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paletteImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -154,25 +185,65 @@ function OracleApp() {
     try {
       const next = generateSeries(form, lexicon);
       setSeries(next);
-      const firstImagePrompt = next[0]?.prompt ?? '';
+      const firstPrompt = next[0]?.prompt ?? '';
+      const variationPrompt = next.map((s) => `=== STATE ${s.index} ===\n${s.prompt}`).join('\n\n');
 
       if (asSeries) {
-        setOutput(next.map((s) => `=== STATE ${s.index} ===\n${s.prompt}`).join('\n\n'));
+        setOutput(firstPrompt);
+        setVariationOutput(variationPrompt);
         setStatus(`Generated ${next.length} states.`);
       } else {
-        setOutput(next[0]?.prompt ?? '');
+        setOutput(firstPrompt);
+        setVariationOutput(variationPrompt);
         setStatus('Generated 1 prompt.');
       }
 
       const imagePromptStates = generateSeries({ ...form, exportMode: 'IMAGE' }, lexicon);
+      const firstImagePrompt = imagePromptStates[0]?.prompt ?? firstPrompt;
+      const imageVariationPrompt = imagePromptStates.map((state) => `=== IMAGE STATE ${state.index} ===\n${state.prompt}`).join('\n\n');
+
       setImagePromptOutput(
-        asSeries
-          ? imagePromptStates.map((state) => `=== IMAGE STATE ${state.index} ===\n${state.prompt}`).join('\n\n')
-          : (imagePromptStates[0]?.prompt ?? firstImagePrompt),
+        firstImagePrompt,
       );
+      setImageVariationOutput(imageVariationPrompt);
+
+      if (asSeries) {
+        setActiveOutputTab('oracleVariations');
+      }
+
       setLastRunMode(asSeries ? 'series' : 'single');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Generation failed');
+    }
+  };
+
+  const perturbPrompt = (target: 'oracle' | 'image', strength: PerturbationStrength) => {
+    if (target === 'oracle') {
+      setOutput((current) => perturbPromptText(current, strength));
+      setVariationOutput((current) => perturbPromptText(current, strength));
+      setStatus(`Applied ${strength} perturbation to Oracle prompt outputs.`);
+      return;
+    }
+
+    setImagePromptOutput((current) => perturbPromptText(current, strength));
+    setImageVariationOutput((current) => perturbPromptText(current, strength));
+    setStatus(`Applied ${strength} perturbation to image prompt outputs.`);
+  };
+
+  const regeneratePromptFamily = (target: 'oracle' | 'image') => {
+    if (target === 'oracle') {
+      runGenerate(lastRunMode === 'series');
+      setStatus('Regenerated Oracle prompt family.');
+      return;
+    }
+
+    try {
+      const imagePromptStates = generateSeries({ ...form, exportMode: 'IMAGE' }, lexicon);
+      setImagePromptOutput(imagePromptStates[0]?.prompt ?? '');
+      setImageVariationOutput(imagePromptStates.map((state) => `=== IMAGE STATE ${state.index} ===\n${state.prompt}`).join('\n\n'));
+      setStatus('Regenerated image prompt family.');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Image regeneration failed');
     }
   };
 
@@ -230,7 +301,9 @@ function OracleApp() {
     setForm(defaultFormState());
     setSeries([]);
     setOutput('Ready. Click Generate.');
+    setVariationOutput('Ready. Click Series to build variations.');
     setImagePromptOutput('Ready. Generate to build an image-specific prompt.');
+    setImageVariationOutput('Ready. Click Series to generate image variations.');
     setStatus('Oracle mode reset to defaults.');
     setLexicon({});
     setSelectedStyleTemplate(ORACLE_STYLE_TEMPLATES[0].label);
@@ -349,8 +422,48 @@ function OracleApp() {
         </section>
 
         <section className="output">
-          <OutputPanel title="Oracle Output" textOutput={output} />
-          <OutputPanel title="Image Generation Prompt" textOutput={imagePromptOutput} />
+          <div className="output-tabs" role="tablist" aria-label="Prompt output views">
+            <button type="button" role="tab" aria-selected={activeOutputTab === 'oraclePrompt'} className={activeOutputTab === 'oraclePrompt' ? 'active' : ''} onClick={() => setActiveOutputTab('oraclePrompt')}>Oracle Prompt</button>
+            <button type="button" role="tab" aria-selected={activeOutputTab === 'oracleVariations'} className={activeOutputTab === 'oracleVariations' ? 'active' : ''} onClick={() => setActiveOutputTab('oracleVariations')}>Oracle Variations</button>
+            <button type="button" role="tab" aria-selected={activeOutputTab === 'imagePrompt'} className={activeOutputTab === 'imagePrompt' ? 'active' : ''} onClick={() => setActiveOutputTab('imagePrompt')}>Image Prompt</button>
+          </div>
+
+          {activeOutputTab === 'oraclePrompt' ? (
+            <>
+              <div className="output-actions-bar">
+                <button type="button" onClick={() => perturbPrompt('oracle', 'slight')}>Perturb Slight</button>
+                <button type="button" onClick={() => perturbPrompt('oracle', 'medium')}>Perturb Medium</button>
+                <button type="button" onClick={() => perturbPrompt('oracle', 'large')}>Perturb Large</button>
+                <button type="button" onClick={() => regeneratePromptFamily('oracle')}>Regenerate Oracle</button>
+              </div>
+              <OutputPanel title="Oracle Output" textOutput={output} />
+            </>
+          ) : null}
+
+          {activeOutputTab === 'oracleVariations' ? (
+            <>
+              <div className="output-actions-bar">
+                <button type="button" onClick={() => perturbPrompt('oracle', 'slight')}>Perturb Slight</button>
+                <button type="button" onClick={() => perturbPrompt('oracle', 'medium')}>Perturb Medium</button>
+                <button type="button" onClick={() => perturbPrompt('oracle', 'large')}>Perturb Large</button>
+                <button type="button" onClick={() => regeneratePromptFamily('oracle')}>Regenerate Oracle</button>
+              </div>
+              <OutputPanel title="Oracle Variations" textOutput={variationOutput} />
+            </>
+          ) : null}
+
+          {activeOutputTab === 'imagePrompt' ? (
+            <>
+              <div className="output-actions-bar">
+                <button type="button" onClick={() => perturbPrompt('image', 'slight')}>Perturb Slight</button>
+                <button type="button" onClick={() => perturbPrompt('image', 'medium')}>Perturb Medium</button>
+                <button type="button" onClick={() => perturbPrompt('image', 'large')}>Perturb Large</button>
+                <button type="button" onClick={() => regeneratePromptFamily('image')}>Regenerate Image</button>
+              </div>
+              <OutputPanel title="Image Generation Prompt" textOutput={imagePromptOutput} />
+              <OutputPanel title="Image Prompt Variations" textOutput={imageVariationOutput} />
+            </>
+          ) : null}
         </section>
       </main>
       <footer className="status">{status}</footer>
